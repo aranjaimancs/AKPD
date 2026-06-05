@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Leaflet + cluster CSS — must be global; Turbopack can't tree-shake these */
+@import "leaflet/dist/leaflet.css";
+@import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
+@import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
+
 /* ── AKPsi brand tokens ─────────────────────────────────────────────────── */
 :root {
   --akp-navy:        #0a2240;

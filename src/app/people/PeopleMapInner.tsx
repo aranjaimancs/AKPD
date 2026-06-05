@@ -1,13 +1,18 @@
 "use client";
 
-// leaflet.markercluster augments the L namespace with L.markerClusterGroup().
-// It is a plain JS side-effect import — no auto-CSS, no module-factory issues.
-import "leaflet.markercluster";
-
-import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
 import type { Map as LeafletMap, LatLngBounds } from "leaflet";
+import Supercluster from "supercluster";
+import type { BBox, GeoJsonProperties } from "geojson";
 
 // ── Fix broken default marker icons in bundlers ───────────────────────────────
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
@@ -40,6 +45,25 @@ export type PersonPin = {
   grad_year: number | null;
 };
 
+type PinProperties = GeoJsonProperties & { pin: PersonPin };
+
+// ── Cluster icon factory ──────────────────────────────────────────────────────
+function makeClusterIcon(count: number): L.DivIcon {
+  const size = count < 10 ? 36 : count < 100 ? 42 : 50;
+  return L.divIcon({
+    html: `<div style="
+      width:${size}px;height:${size}px;
+      background:#0a2240;border:2.5px solid #c9a84c;
+      border-radius:50%;display:flex;align-items:center;justify-content:center;
+      color:#c9a84c;font-weight:700;font-size:${count < 100 ? 13 : 11}px;
+      font-family:system-ui,sans-serif;box-shadow:0 2px 8px rgba(10,34,64,0.4);
+    ">${count}</div>`,
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
 // ── Popup HTML builder ────────────────────────────────────────────────────────
 function buildPopupHtml(pin: PersonPin): string {
   const img = pin.headshot_url
@@ -67,9 +91,7 @@ function buildPopupHtml(pin: PersonPin): string {
   </div>`;
 }
 
-// ── Imperative cluster layer ──────────────────────────────────────────────────
-// Manages the leaflet.markercluster layer imperatively so we never import
-// react-leaflet-cluster (which auto-imports CSS causing Turbopack failures).
+// ── Cluster layer (supercluster-powered) ─────────────────────────────────────
 function ClusterLayer({
   pins,
   onMarkerClick,
@@ -78,31 +100,104 @@ function ClusterLayer({
   onMarkerClick: (id: string) => void;
 }) {
   const map = useMap();
-  // Keep a stable ref to the callback so the effect doesn't re-run on every
-  // render when the parent passes a new function reference.
   const onClickRef = useRef(onMarkerClick);
   onClickRef.current = onMarkerClick;
 
+  // Build the supercluster index once when pins change
+  const scRef = useRef<Supercluster<PinProperties>>(
+    new Supercluster<PinProperties>({ radius: 60, maxZoom: 16 })
+  );
+
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const group = (L as any).markerClusterGroup({ chunkedLoading: true });
+    scRef.current.load(
+      pins.map((pin) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [pin.lng, pin.lat] },
+        properties: { pin },
+      }))
+    );
+  }, [pins]);
 
-    for (const pin of pins) {
-      const marker = L.marker([pin.lat, pin.lng]);
-      marker.bindPopup(buildPopupHtml(pin), { maxWidth: 240 });
-      marker.on("click", () => onClickRef.current(pin.id));
-      group.addLayer(marker);
-    }
+  // Track current viewport
+  const [viewport, setViewport] = useState<{
+    bounds: BBox;
+    zoom: number;
+  } | null>(null);
 
-    map.addLayer(group);
-    return () => {
-      map.removeLayer(group);
-    };
-  // Re-build the cluster layer only when the set of pins changes.
+  const updateViewport = useCallback(() => {
+    const b = map.getBounds();
+    const zoom = Math.floor(map.getZoom());
+    setViewport({
+      bounds: [
+        b.getWest(),
+        b.getSouth(),
+        b.getEast(),
+        b.getNorth(),
+      ],
+      zoom,
+    });
+  }, [map]);
+
+  useMapEvents({
+    moveend: updateViewport,
+    zoomend: updateViewport,
+  });
+
+  useEffect(() => {
+    updateViewport();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, pins]);
+  }, []);
 
-  return null;
+  if (!viewport) return null;
+
+  const items = scRef.current.getClusters(viewport.bounds, viewport.zoom);
+
+  return (
+    <>
+      {items.map((feature) => {
+        const [lng, lat] = feature.geometry.coordinates;
+        const props = feature.properties as Record<string, unknown>;
+
+        if (props.cluster) {
+          // Cluster bubble
+          const clusterId = props.cluster_id as number;
+          const count = props.point_count as number;
+          return (
+            <Marker
+              key={`cluster-${clusterId}`}
+              position={[lat, lng]}
+              icon={makeClusterIcon(count)}
+              eventHandlers={{
+                click: () => {
+                  const expansionZoom = Math.min(
+                    scRef.current.getClusterExpansionZoom(clusterId),
+                    18
+                  );
+                  map.flyTo([lat, lng], expansionZoom, { duration: 0.6 });
+                },
+              }}
+            />
+          );
+        }
+
+        // Individual pin
+        const pin = (props as PinProperties).pin;
+        return (
+          <Marker
+            key={pin.id}
+            position={[lat, lng]}
+            eventHandlers={{ click: () => onClickRef.current(pin.id) }}
+          >
+            <Popup maxWidth={240}>
+              <div
+                dangerouslySetInnerHTML={{ __html: buildPopupHtml(pin) }}
+              />
+            </Popup>
+          </Marker>
+        );
+      })}
+    </>
+  );
 }
 
 // ── Viewport watcher ──────────────────────────────────────────────────────────

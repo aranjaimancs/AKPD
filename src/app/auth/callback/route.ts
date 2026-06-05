@@ -42,11 +42,15 @@ export async function GET(request: Request) {
     );
   }
 
-  // Stamp role into user metadata so the middleware can read it from the JWT
-  // without hitting the database on every request.
+  // Stamp role into user metadata so middleware can read it from the JWT.
   await admin.auth.admin.updateUserById(data.user.id, {
     user_metadata: { role: record.role },
   });
+
+  // Ensure a profiles row exists (idempotent — safe to call every login).
+  await admin
+    .from("profiles")
+    .upsert({ id: data.user.id, email }, { onConflict: "id", ignoreDuplicates: true });
 
   return NextResponse.redirect(new URL(next, siteUrl));
 }

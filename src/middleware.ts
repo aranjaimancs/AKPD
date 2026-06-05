@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Paths that never require authentication. */
-const PUBLIC_PREFIXES = ["/login", "/auth/"];
+const PUBLIC_PREFIXES = ["/login", "/auth/", "/not-authorized"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -44,8 +44,8 @@ export async function middleware(request: NextRequest) {
 
   // ── Routing rules ──────────────────────────────────────────────────────────
 
-  // Already logged in and heading to /login → send them home
-  if (user && pathname.startsWith("/login")) {
+  // Already logged in and heading to /login or /not-authorized → send them home
+  if (user && (pathname.startsWith("/login") || pathname.startsWith("/not-authorized"))) {
     return NextResponse.redirect(new URL("/seniors", request.url));
   }
 

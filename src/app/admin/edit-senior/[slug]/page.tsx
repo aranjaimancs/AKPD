@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { notFound } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import { Profile } from "@/types/profile";
 import SeniorForm from "@/components/SeniorForm";
 
@@ -16,6 +17,8 @@ export default async function EditSeniorPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await requireAdmin();
+
   const { slug } = await params;
   const profile = getProfile(slug);
   if (!profile) notFound();

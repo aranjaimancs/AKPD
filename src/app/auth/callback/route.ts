@@ -1,8 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function GET(request: Request) {
+/**
+ * GET /auth/callback
+ * Google redirects here after OAuth. This handler:
+ *  1. Exchanges the one-time code for a Supabase session.
+ *  2. Checks the email against the members allowlist.
+ *  3. Signs out + bounces unauthorized users immediately.
+ *  4. On success: links auth_user_id, stamps role in user_metadata,
+ *     ensures a profiles row exists, then redirects into the app.
+ */
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/seniors";
@@ -21,33 +30,44 @@ export async function GET(request: Request) {
   }
 
   const email = data.user.email?.toLowerCase().trim();
-
   if (!email) {
     await supabase.auth.signOut();
     return NextResponse.redirect(new URL("/login?error=no_email", siteUrl));
   }
 
-  // Re-check allow-list (defence in depth — covers any edge cases)
+  // ── Authoritative allowlist check ─────────────────────────────────────────
+  // Use the admin client so we bypass RLS (the user's session isn't fully
+  // established yet, and RLS itself depends on is_member() which needs this
+  // lookup to succeed first).
   const admin = createAdminClient();
-  const { data: record } = await admin
-    .from("allowed_emails")
-    .select("role")
+  const { data: member } = await admin
+    .from("members")
+    .select("id, role, auth_user_id")
     .eq("email", email)
     .maybeSingle();
 
-  if (!record) {
+  if (!member) {
+    // Email not in allowlist — sign out immediately and show the gate page.
     await supabase.auth.signOut();
-    return NextResponse.redirect(
-      new URL("/login?error=unauthorized", siteUrl)
-    );
+    return NextResponse.redirect(new URL("/not-authorized", siteUrl));
   }
 
-  // Stamp role into user metadata so middleware can read it from the JWT.
+  // ── Link auth_user_id on first sign-in ────────────────────────────────────
+  if (!member.auth_user_id) {
+    await admin
+      .from("members")
+      .update({ auth_user_id: data.user.id })
+      .eq("id", member.id);
+  }
+
+  // ── Stamp role into user_metadata ─────────────────────────────────────────
+  // This lets middleware do a cheap JWT-based coarse redirect without a DB
+  // call on every request. The authoritative check is getCurrentMember().
   await admin.auth.admin.updateUserById(data.user.id, {
-    user_metadata: { role: record.role },
+    user_metadata: { role: member.role },
   });
 
-  // Ensure a profiles row exists (idempotent — safe to call every login).
+  // ── Ensure a profiles row exists (idempotent) ─────────────────────────────
   await admin
     .from("profiles")
     .upsert({ id: data.user.id, email }, { onConflict: "id", ignoreDuplicates: true });

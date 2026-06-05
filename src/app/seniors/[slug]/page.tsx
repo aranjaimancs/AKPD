@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Profile, TimelineEntry } from "@/types/profile";
 import { notFound } from "next/navigation";
+import { getCurrentMember } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,9 @@ export default async function ProfilePage({
   const profile = getProfile(slug);
   if (!profile) notFound();
 
+  const member = await getCurrentMember();
+  const isAdmin = member?.role === "admin";
+
   const headshotUrl = `/seniors-content/${slug}/${profile.headshot}`;
   const academicLine = [
     ...profile.majors,
@@ -121,20 +125,22 @@ export default async function ProfilePage({
               </svg>
               All Seniors
             </Link>
-            <Link
-              href={`/admin/edit-senior/${slug}`}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:opacity-80"
-              style={{
-                background: "rgba(201,168,76,0.15)",
-                color: "var(--akp-gold)",
-                border: "1px solid rgba(201,168,76,0.3)",
-              }}
-            >
-              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Edit Profile
-            </Link>
+            {isAdmin && (
+              <Link
+                href={`/admin/edit-senior/${slug}`}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:opacity-80"
+                style={{
+                  background: "rgba(201,168,76,0.15)",
+                  color: "var(--akp-gold)",
+                  border: "1px solid rgba(201,168,76,0.3)",
+                }}
+              >
+                <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit Profile
+              </Link>
+            )}
           </div>
 
           <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
@@ -480,16 +486,18 @@ export default async function ProfilePage({
             </svg>
             Back to all seniors
           </Link>
-          <Link
-            href={`/admin/edit-senior/${slug}`}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70"
-            style={{ color: "var(--akp-gray-600)" }}
-          >
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Edit Profile
-          </Link>
+          {isAdmin && (
+            <Link
+              href={`/admin/edit-senior/${slug}`}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70"
+              style={{ color: "var(--akp-gray-600)" }}
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Profile
+            </Link>
+          )}
         </div>
       </div>
     </main>

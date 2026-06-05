@@ -1,6 +1,11 @@
+import Link from "next/link";
+import { TRACKS, TRACK_ICONS } from "./tracks";
+import TrackCard from "./TrackCard";
+
 export default function RecruitmentPage() {
   return (
     <main className="flex-1">
+      {/* ── Hero ── */}
       <div className="navy-texture relative overflow-hidden">
         <div
           className="pointer-events-none absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-10"
@@ -9,45 +14,65 @@ export default function RecruitmentPage() {
         <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-20">
           <div className="flex items-center gap-3 mb-8">
             <div className="h-px w-8" style={{ background: "var(--akp-gold)" }} />
-            <span className="text-xs font-bold tracking-[0.2em] uppercase" style={{ color: "var(--akp-gold)" }}>
+            <span
+              className="text-xs font-bold tracking-[0.2em] uppercase"
+              style={{ color: "var(--akp-gold)" }}
+            >
               Alpha Kappa Psi · AKPD
             </span>
           </div>
+
           <h1
-            className="text-5xl sm:text-6xl font-extrabold leading-[1.05] text-white mb-6"
+            className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] text-white mb-6"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Recruitment
+            Recruiting
             <br />
-            <span style={{ color: "var(--akp-gold)" }}>& Rush.</span>
+            <span style={{ color: "var(--akp-gold)" }}>Guides.</span>
           </h1>
           <p className="text-blue-200 text-lg max-w-lg leading-relaxed">
-            Everything prospective members need — timelines, events, what we look for, and how to apply.
+            Track-by-track breakdowns of timelines, interview formats, and
+            what it actually takes to land the role — written by members
+            who've been through it.
           </p>
         </div>
         <div className="h-[3px]" style={{ background: "var(--akp-gold)" }} />
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-24 text-center">
-        <div
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold mb-8"
-          style={{
-            background: "rgba(201,168,76,0.1)",
-            color: "var(--akp-gold)",
-            border: "1px solid rgba(201,168,76,0.25)",
-          }}
-        >
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--akp-gold)" }} />
-          Coming soon
+      {/* ── Track grid ── */}
+      <div className="max-w-6xl mx-auto px-6 py-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {TRACKS.map((track) => {
+            const iconPath = TRACK_ICONS[track.id];
+            const hasContent =
+              track.timeline ||
+              track.tips?.length ||
+              track.keyPrograms?.length;
+
+            return (
+              <TrackCard
+                key={track.id}
+                track={track}
+                iconPath={iconPath}
+                hasContent={!!hasContent}
+              />
+            );
+          })}
         </div>
-        <h2
-          className="text-3xl font-extrabold mb-4"
-          style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+
+        <p
+          className="text-center text-sm mt-12"
+          style={{ color: "var(--akp-gray-400)" }}
         >
-          Recruitment hub launching soon
-        </h2>
-        <p className="text-base max-w-md mx-auto leading-relaxed" style={{ color: "var(--akp-gray-600)" }}>
-          Rush dates, events, what makes a great AKPD member, and the full application process — all in one place.
+          Content is added as members share their experiences.{" "}
+          <Link
+            href="/seniors"
+            className="font-semibold underline underline-offset-2 hover:opacity-70 transition-opacity"
+            style={{ color: "var(--akp-navy)" }}
+          >
+            See senior profiles
+          </Link>{" "}
+          for real timelines.
         </p>
       </div>
     </main>

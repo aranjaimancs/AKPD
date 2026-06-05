@@ -147,23 +147,6 @@ export default function ProfileDropdown({
               label="Settings"
             />
 
-            {isAdmin && (
-              <>
-                <div className="my-1 h-px mx-2" style={{ background: "var(--akp-gray-200)" }} />
-                <MenuItem
-                  href="/admin/add-senior"
-                  onClick={close}
-                  icon={
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                  }
-                  label="Add Senior"
-                  gold
-                />
-              </>
-            )}
-
             <div className="my-1 h-px mx-2" style={{ background: "var(--akp-gray-200)" }} />
 
             <form action={signOut}>
@@ -190,32 +173,26 @@ function MenuItem({
   onClick,
   icon,
   label,
-  gold = false,
 }: {
   href: string;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
-  gold?: boolean;
 }) {
   return (
     <Link
       href={href}
       onClick={onClick}
       className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-150"
-      style={{
-        color: gold ? "var(--akp-gold)" : "var(--akp-gray-800)",
-      }}
+      style={{ color: "var(--akp-gray-800)" }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.background = gold
-          ? "rgba(201,168,76,0.08)"
-          : "var(--akp-off-white)";
+        (e.currentTarget as HTMLElement).style.background = "var(--akp-off-white)";
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLElement).style.background = "transparent";
       }}
     >
-      <span style={{ color: gold ? "var(--akp-gold)" : "var(--akp-gray-400)" }}>{icon}</span>
+      <span style={{ color: "var(--akp-gray-400)" }}>{icon}</span>
       {label}
     </Link>
   );

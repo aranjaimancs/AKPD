@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentMember } from "@/lib/auth";
 import NavLinks from "./NavLinks";
 import ProfileDropdown from "./ProfileDropdown";
 
@@ -10,6 +11,7 @@ function getInitials(str: string): string {
 }
 
 export default async function Navbar() {
+  // getUser() validates the JWT with the Supabase auth server.
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,7 +19,11 @@ export default async function Navbar() {
 
   if (!user) return null;
 
-  // Gracefully handle case where profiles table isn't set up yet
+  // Authoritative role from the members table (not just JWT metadata).
+  const member = await getCurrentMember();
+  if (!member) return null;
+
+  // Profile data (name + avatar) from the profiles table.
   let profile: { full_name: string | null; avatar_url: string | null } | null = null;
   try {
     const { data } = await supabase
@@ -28,9 +34,11 @@ export default async function Navbar() {
     profile = data;
   } catch {}
 
-  const displayName = profile?.full_name || user.email!.split("@")[0];
-  const initials = getInitials(profile?.full_name || user.email || "");
-  const isAdmin = user.user_metadata?.role === "admin";
+  const displayName =
+    profile?.full_name || member.full_name || user.email!.split("@")[0];
+  const initials = getInitials(
+    profile?.full_name || member.full_name || user.email || ""
+  );
 
   return (
     <header
@@ -63,21 +71,24 @@ export default async function Navbar() {
         </Link>
 
         {/* ── Divider ── */}
-        <div className="h-5 w-px shrink-0" style={{ background: "rgba(201,168,76,0.25)" }} />
+        <div
+          className="h-5 w-px shrink-0"
+          style={{ background: "rgba(201,168,76,0.25)" }}
+        />
 
-        {/* ── Nav links (client — needs usePathname) ── */}
-        <NavLinks />
+        {/* ── Nav links ── */}
+        <NavLinks isAdmin={member.role === "admin"} />
 
         {/* ── Spacer ── */}
         <div className="flex-1" />
 
-        {/* ── Profile dropdown (client) ── */}
+        {/* ── Profile dropdown ── */}
         <ProfileDropdown
           email={user.email!}
           displayName={displayName}
           avatarUrl={profile?.avatar_url ?? null}
           initials={initials}
-          isAdmin={isAdmin}
+          isAdmin={member.role === "admin"}
         />
       </div>
     </header>

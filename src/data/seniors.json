@@ -1,0 +1,23 @@
+[
+  {
+    "slug": "founding-exec",
+    "name": "Susan Zhang",
+    "headshot": "headshot.jpg",
+    "majors": [
+      "Business"
+    ],
+    "minors": [
+      "Data Science"
+    ],
+    "pledgeClass": "Founding Exec",
+    "gradYear": 2026,
+    "destinationTitle": "Incoming Analyst",
+    "destinationCompany": "TD Securities — Global Markets",
+    "summary": "A driven business major from Asheville, NC, she explored various facets of finance, ultimately securing a role in the financial sector with a strong work-life balance.",
+    "tags": [
+      "Finance",
+      "Consulting",
+      "Girls Who Invest"
+    ]
+  }
+]

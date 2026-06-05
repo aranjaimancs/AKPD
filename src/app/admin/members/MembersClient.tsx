@@ -149,13 +149,13 @@ function MemberRow({ member, currentEmail }: { member: Member; currentEmail: str
 
   function toggleRole() {
     const next = member.role === "admin" ? "member" : "admin";
-    startTransition(() => updateMemberRole(member.id, next));
+    startTransition(async () => { await updateMemberRole(member.id, next); });
   }
 
   function remove() {
     if (!confirm(`Remove ${member.email} from the member list?`)) return;
     setRemoving(true);
-    startTransition(() => removeMember(member.id));
+    startTransition(async () => { await removeMember(member.id); });
   }
 
   return (

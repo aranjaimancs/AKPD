@@ -11,8 +11,9 @@ const MEMBER_LINKS = [
 ];
 
 const ADMIN_LINKS = [
-  { href: "/admin/members", label: "Members" },
-  { href: "/admin/people",  label: "People DB" },
+  { href: "/admin/members",     label: "Members" },
+  { href: "/admin/people",      label: "People DB" },
+  { href: "/admin/recruitment", label: "Recruit DB" },
 ];
 
 export default function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {

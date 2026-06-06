@@ -31,6 +31,15 @@ export default async function MembersPage() {
           style={{ background: "radial-gradient(circle, var(--akp-gold) 0%, transparent 70%)" }}
         />
         <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-20">
+          <div className="mb-4">
+            <a
+              href="/admin"
+              className="text-xs font-semibold transition-opacity hover:opacity-70"
+              style={{ color: "rgba(201,168,76,0.7)" }}
+            >
+              ← Admin
+            </a>
+          </div>
           <div className="flex items-center gap-3 mb-8">
             <div className="h-px w-8" style={{ background: "var(--akp-gold)" }} />
             <span

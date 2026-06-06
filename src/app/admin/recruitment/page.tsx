@@ -30,6 +30,13 @@ export default async function AdminRecruitmentPage() {
         {/* Header */}
         <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
           <div>
+            <a
+              href="/admin"
+              className="inline-block text-xs font-semibold mb-2 transition-opacity hover:opacity-70"
+              style={{ color: "var(--akp-gold)" }}
+            >
+              ← Admin
+            </a>
             <p
               className="text-xs font-bold uppercase tracking-widest mb-1"
               style={{ color: "var(--akp-gold)" }}

@@ -399,7 +399,7 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
 
       if (!res.ok || json.error) throw new Error(json.error || "Something went wrong");
 
-      router.push(`/seniors/${json.slug}`);
+      router.push("/admin/seniors");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -416,14 +416,14 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
       <div className="navy-texture relative overflow-hidden">
         <div className="relative max-w-3xl mx-auto px-6 pt-10 pb-14">
           <Link
-            href={isEdit && slug ? `/seniors/${slug}` : "/seniors"}
+            href="/admin/seniors"
             className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase mb-8 transition-opacity hover:opacity-70"
             style={{ color: "var(--akp-gold)" }}
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            {isEdit ? "Back to Profile" : "All Seniors"}
+            ← Seniors Admin
           </Link>
 
           <h1
@@ -627,7 +627,7 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
               {submitting ? "Saving…" : isEdit ? "Save Changes" : "Save Senior Profile"}
             </button>
             <Link
-              href={isEdit && slug ? `/seniors/${slug}` : "/seniors"}
+              href="/admin/seniors"
               className="text-sm font-medium transition-opacity hover:opacity-70"
               style={{ color: "var(--akp-gray-600)" }}
             >

@@ -371,15 +371,6 @@ export default function PeopleClient({
               {filtered.length} member{filtered.length !== 1 ? "s" : ""}
               {filtered.length !== people.length && ` of ${people.length}`}
             </p>
-            {isAdmin && (
-              <a
-                href="/admin/people"
-                className="text-[11px] font-semibold"
-                style={{ color: "var(--akp-gold)" }}
-              >
-                Manage →
-              </a>
-            )}
           </div>
         </div>
 

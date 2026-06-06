@@ -152,15 +152,6 @@ function FieldSection({
           >
             {hasResources ? `${resources.length} resource${resources.length !== 1 ? "s" : ""}` : "Coming soon"}
           </span>
-          {isAdmin && (
-            <a
-              href={`/admin/recruitment#${field.slug}`}
-              className="text-[11px] font-semibold transition-opacity hover:opacity-70"
-              style={{ color: "var(--akp-gold)" }}
-            >
-              + Add
-            </a>
-          )}
         </div>
       </div>
 
@@ -281,31 +272,6 @@ export default async function RecruitmentPage() {
 
         <div className="h-[3px]" style={{ background: "var(--akp-gold)" }} />
       </div>
-
-      {/* ── Admin bar ── */}
-      {isAdmin && (
-        <div
-          className="sticky top-0 z-10 border-b"
-          style={{
-            background: "rgba(10,34,64,0.97)",
-            backdropFilter: "blur(8px)",
-            borderColor: "rgba(201,168,76,0.2)",
-          }}
-        >
-          <div className="max-w-6xl mx-auto px-6 py-2.5 flex items-center justify-between gap-4">
-            <p className="text-xs font-semibold" style={{ color: "rgba(201,168,76,0.7)" }}>
-              Admin view
-            </p>
-            <a
-              href="/admin/recruitment"
-              className="text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-              style={{ background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }}
-            >
-              Manage Fields &amp; Resources →
-            </a>
-          </div>
-        </div>
-      )}
 
       {/* ── Fields ── */}
       <div className="max-w-6xl mx-auto px-6 py-12 flex flex-col gap-14">

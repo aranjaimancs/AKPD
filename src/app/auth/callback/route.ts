@@ -11,11 +11,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
  *  4. On success: links auth_user_id, stamps role in user_metadata,
  *     ensures a profiles row exists, then redirects into the app.
  */
+function getSiteUrl(request: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  // x-forwarded-host = the hostname the browser actually requested (set by Vercel/proxies)
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (forwardedHost) return `https://${forwardedHost}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/seniors";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? url.origin;
+  const siteUrl = getSiteUrl(request);
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", siteUrl));
@@ -52,25 +61,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/not-authorized", siteUrl));
   }
 
-  // ── Link auth_user_id on first sign-in ────────────────────────────────────
-  if (!member.auth_user_id) {
-    await admin
-      .from("members")
-      .update({ auth_user_id: data.user.id })
-      .eq("id", member.id);
-  }
+  // ── Link, stamp, and upsert profile — all in parallel ────────────────────
+  await Promise.all([
+    // Link auth_user_id on first sign-in
+    !member.auth_user_id
+      ? admin.from("members").update({ auth_user_id: data.user.id }).eq("id", member.id)
+      : Promise.resolve(),
 
-  // ── Stamp role into user_metadata ─────────────────────────────────────────
-  // This lets middleware do a cheap JWT-based coarse redirect without a DB
-  // call on every request. The authoritative check is getCurrentMember().
-  await admin.auth.admin.updateUserById(data.user.id, {
-    user_metadata: { role: member.role },
-  });
+    // Stamp role into user_metadata so middleware can do cheap JWT-based
+    // coarse redirects without a DB call on every request.
+    admin.auth.admin.updateUserById(data.user.id, {
+      user_metadata: { role: member.role },
+    }),
 
-  // ── Ensure a profiles row exists (idempotent) ─────────────────────────────
-  await admin
-    .from("profiles")
-    .upsert({ id: data.user.id, email }, { onConflict: "id", ignoreDuplicates: true });
+    // Ensure a profiles row exists (idempotent)
+    admin
+      .from("profiles")
+      .upsert({ id: data.user.id, email }, { onConflict: "id", ignoreDuplicates: true }),
+  ]);
 
   return NextResponse.redirect(new URL(next, siteUrl));
 }

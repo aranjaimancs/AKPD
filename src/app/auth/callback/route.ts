@@ -73,11 +73,18 @@ export async function GET(request: NextRequest) {
 
   // ── Authoritative allowlist check ─────────────────────────────────────────
   const admin = createAdminClient();
-  const { data: member } = await admin
+  const { data: member, error: memberError } = await admin
     .from("members")
     .select("id, role, auth_user_id")
     .eq("email", email)
     .maybeSingle();
+
+  if (memberError) {
+    // DB lookup failed — likely a bad SUPABASE_SERVICE_ROLE_KEY env var.
+    // Don't sign the user out; send them to a retriable error page.
+    console.error("Members DB lookup error:", memberError.message, "| email:", email);
+    return NextResponse.redirect(new URL("/login?error=db_error", siteUrl));
+  }
 
   if (!member) {
     // Email not in allowlist — sign out and show the gate page.

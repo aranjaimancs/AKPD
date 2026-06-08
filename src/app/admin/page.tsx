@@ -116,14 +116,11 @@ export default async function AdminHubPage() {
             <a
               key={card.href}
               href={card.href}
-              className="group flex flex-col rounded-2xl p-6 transition-all duration-200"
+              className="admin-hub-card group flex flex-col rounded-2xl p-6 transition-all duration-200"
               style={{
                 background: "var(--akp-white)",
-                border: "1.5px solid var(--akp-navy)",
-                boxShadow: "var(--card-shadow, 0 2px 8px rgba(10,34,64,0.08))",
                 textDecoration: "none",
               }}
-              onMouseEnter={() => {}}
             >
               {/* Icon square */}
               <div

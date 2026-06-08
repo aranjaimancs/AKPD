@@ -68,6 +68,6 @@ export async function requireMember(): Promise<Member> {
  */
 export async function requireAdmin(): Promise<Member> {
   const member = await requireMember();
-  if (member.role !== "admin") redirect("/seniors");
+  if (member.role !== "admin") redirect("/people");
   return member;
 }

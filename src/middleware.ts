@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
 
   // Already logged in and heading to /login or /not-authorized → send them home
   if (user && (pathname.startsWith("/login") || pathname.startsWith("/not-authorized"))) {
-    return NextResponse.redirect(new URL("/seniors", request.url));
+    return NextResponse.redirect(new URL("/people", request.url));
   }
 
   // Not logged in and requesting a protected page → send to login
@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
   if (user && pathname.startsWith("/admin")) {
     const role = user.user_metadata?.role as string | undefined;
     if (role !== "admin") {
-      return NextResponse.redirect(new URL("/seniors", request.url));
+      return NextResponse.redirect(new URL("/people", request.url));
     }
   }
 

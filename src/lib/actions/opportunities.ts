@@ -68,11 +68,22 @@ export async function deleteOpportunity(id: string): Promise<{ error?: string }>
   if (!user) return { error: "Not authenticated." };
 
   const admin = createAdminClient();
-  const { error } = await admin
+
+  // Admins can remove any post; members can only remove their own.
+  const { data: member } = await admin
+    .from("members")
+    .select("role")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  const isAdmin = member?.role === "admin";
+
+  const query = admin
     .from("opportunities")
     .update({ is_active: false })
-    .eq("id", id)
-    .eq("posted_by", user.id);
+    .eq("id", id);
+
+  const { error } = isAdmin ? await query : await query.eq("posted_by", user.id);
 
   if (error) return { error: "Could not remove opportunity." };
   revalidatePath("/opportunities");

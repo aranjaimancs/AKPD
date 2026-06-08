@@ -1,5 +1,5 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -10,6 +10,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
  *  3. Signs out + bounces unauthorized users immediately.
  *  4. On success: links auth_user_id, stamps role in user_metadata,
  *     ensures a profiles row exists, then redirects into the app.
+ *
+ * Important: cookies must be written directly onto the redirect response,
+ * not via cookies() from next/headers — otherwise the session is lost after
+ * the redirect and the user ends up back at /login.
  */
 function getSiteUrl(request: NextRequest): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
@@ -23,14 +27,38 @@ function getSiteUrl(request: NextRequest): string {
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/seniors";
+  const next = url.searchParams.get("next") ?? "/people";
   const siteUrl = getSiteUrl(request);
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", siteUrl));
   }
 
-  const supabase = await createClient();
+  // Build the success redirect response first so we can write session cookies
+  // directly onto it — this is the only reliable way to persist the session
+  // across the redirect in Next.js App Router route handlers.
+  const successResponse = NextResponse.redirect(new URL(next, siteUrl));
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Write session cookies onto the redirect response so the browser
+          // receives them in the same round-trip.
+          cookiesToSet.forEach(({ name, value, options }) => {
+            successResponse.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user) {
@@ -40,14 +68,10 @@ export async function GET(request: NextRequest) {
 
   const email = data.user.email?.toLowerCase().trim();
   if (!email) {
-    await supabase.auth.signOut();
     return NextResponse.redirect(new URL("/login?error=no_email", siteUrl));
   }
 
   // ── Authoritative allowlist check ─────────────────────────────────────────
-  // Use the admin client so we bypass RLS (the user's session isn't fully
-  // established yet, and RLS itself depends on is_member() which needs this
-  // lookup to succeed first).
   const admin = createAdminClient();
   const { data: member } = await admin
     .from("members")
@@ -56,29 +80,23 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (!member) {
-    // Email not in allowlist — sign out immediately and show the gate page.
+    // Email not in allowlist — sign out and show the gate page.
     await supabase.auth.signOut();
     return NextResponse.redirect(new URL("/not-authorized", siteUrl));
   }
 
   // ── Link, stamp, and upsert profile — all in parallel ────────────────────
   await Promise.all([
-    // Link auth_user_id on first sign-in
     !member.auth_user_id
       ? admin.from("members").update({ auth_user_id: data.user.id }).eq("id", member.id)
       : Promise.resolve(),
-
-    // Stamp role into user_metadata so middleware can do cheap JWT-based
-    // coarse redirects without a DB call on every request.
     admin.auth.admin.updateUserById(data.user.id, {
       user_metadata: { role: member.role },
     }),
-
-    // Ensure a profiles row exists (idempotent)
     admin
       .from("profiles")
       .upsert({ id: data.user.id, email }, { onConflict: "id", ignoreDuplicates: true }),
   ]);
 
-  return NextResponse.redirect(new URL(next, siteUrl));
+  return successResponse;
 }

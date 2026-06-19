@@ -92,20 +92,10 @@ function removeArr(arr: string[], i: number): string[] {
 
 export function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="rounded-2xl p-6 mb-6"
-      style={{ background: "var(--akp-white)", border: "1px solid var(--akp-gray-200)" }}
-    >
-      <h2
-        className="text-base font-bold mb-5 pb-3"
-        style={{
-          color: "var(--akp-navy)",
-          fontFamily: "var(--font-display)",
-          borderBottom: "1px solid var(--akp-gray-200)",
-        }}
-      >
-        {title}
-      </h2>
+    <div className="mb-8">
+      <div className="section-label mb-5">
+        <h2>{title}</h2>
+      </div>
       {children}
     </div>
   );
@@ -113,7 +103,7 @@ export function SectionCard({ title, children }: { title: string; children: Reac
 
 function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--akp-gray-600)" }}>
+    <label className="input-label">
       {children}
       {required && <span style={{ color: "#ef4444" }}> *</span>}
     </label>
@@ -137,12 +127,7 @@ function Input({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
-      style={{
-        borderColor: "var(--akp-gray-200)",
-        color: "var(--akp-gray-800)",
-        background: "var(--akp-off-white)",
-      }}
+      className="input"
     />
   );
 }
@@ -164,12 +149,7 @@ function Textarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 resize-none"
-      style={{
-        borderColor: "var(--akp-gray-200)",
-        color: "var(--akp-gray-800)",
-        background: "var(--akp-off-white)",
-      }}
+      className="input resize-none"
     />
   );
 }
@@ -179,12 +159,12 @@ function AddButton({ onClick, label = "Add" }: { onClick: () => void; label?: st
     <button
       type="button"
       onClick={onClick}
-      className="mt-2 text-xs font-semibold flex items-center gap-1.5 transition-opacity hover:opacity-70"
-      style={{ color: "var(--akp-navy)" }}
+      className="mt-2 text-[13px] font-semibold flex items-center gap-1.5 transition-opacity hover:opacity-70"
+      style={{ color: "var(--t-secondary)" }}
     >
       <span
-        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs"
-        style={{ background: "var(--akp-navy)" }}
+        className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[10px]"
+        style={{ background: "var(--t-muted)" }}
       >
         +
       </span>
@@ -198,8 +178,16 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm transition-colors hover:opacity-80"
-      style={{ background: "var(--akp-gray-100)", color: "var(--akp-gray-600)" }}
+      className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm transition-colors"
+      style={{ color: "var(--t-muted)" }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.background = "#fef2f2";
+        (e.currentTarget as HTMLElement).style.color = "#dc2626";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.background = "transparent";
+        (e.currentTarget as HTMLElement).style.color = "var(--t-muted)";
+      }}
       title="Remove"
     >
       ×
@@ -282,7 +270,7 @@ function TimelineBuilder({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs" style={{ color: "var(--akp-gray-400)" }}>
+      <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>
         Entries are grouped by year automatically. Use terms like{" "}
         <span className="font-semibold">Sem 1</span>,{" "}
         <span className="font-semibold">Sem 2</span>,{" "}
@@ -293,7 +281,7 @@ function TimelineBuilder({
         <div
           key={i}
           className="rounded-xl p-4"
-          style={{ background: "var(--akp-off-white)", border: "1px solid var(--akp-gray-200)" }}
+          style={{ background: "var(--s-1)", border: "1px solid var(--b-subtle)" }}
         >
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1">
@@ -411,38 +399,22 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
   const isEdit = mode === "edit";
 
   return (
-    <main className="flex-1">
-      {/* Header */}
-      <div className="navy-texture relative overflow-hidden">
-        <div className="relative max-w-3xl mx-auto px-6 pt-10 pb-14">
-          <Link
-            href="/admin/seniors"
-            className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase mb-8 transition-opacity hover:opacity-70"
-            style={{ color: "var(--akp-gold)" }}
-          >
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            ← Seniors Admin
-          </Link>
-
-          <h1
-            className="text-4xl font-extrabold text-white mb-2"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {isEdit ? `Edit — ${initialData?.name}` : "Add a Senior"}
-          </h1>
-          <p className="text-blue-200/70 text-sm">
-            {isEdit
-              ? "Update any fields below and save."
-              : "Fill in the profile below. The new senior will appear immediately in the directory."}
-          </p>
+    <main className="flex-1" style={{ background: "var(--s-page)", minHeight: "100vh" }}>
+      {/* ── Breadcrumb bar ── */}
+      <div style={{ background: "var(--s-0)", borderBottom: "1px solid var(--b-default)" }}>
+        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center gap-2">
+          <Link href="/admin" className="text-[13px] transition-opacity hover:opacity-70" style={{ color: "var(--t-muted)" }}>Admin</Link>
+          <span style={{ color: "var(--b-strong)" }}>/</span>
+          <Link href="/admin/seniors" className="text-[13px] transition-opacity hover:opacity-70" style={{ color: "var(--t-muted)" }}>Senior Profiles</Link>
+          <span style={{ color: "var(--b-strong)" }}>/</span>
+          <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
+            {isEdit ? initialData?.name ?? "Edit Senior" : "Add Senior"}
+          </span>
         </div>
-        <div className="h-[3px]" style={{ background: "var(--akp-gold)" }} />
       </div>
 
       {/* Form */}
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-10">
         <form onSubmit={handleSubmit}>
 
           {/* Basic Info */}
@@ -474,22 +446,22 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
                 className="shrink-0 rounded-xl overflow-hidden"
                 style={{
                   width: 100, height: 125,
-                  background: "var(--akp-gray-100)",
-                  border: "1px solid var(--akp-gray-200)",
+                  background: "var(--s-1)",
+                  border: "1px solid var(--b-default)",
                 }}
               >
                 {headshotPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={headshotPreview} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-center px-2" style={{ color: "var(--akp-gray-400)" }}>
+                  <div className="w-full h-full flex items-center justify-center text-xs text-center px-2" style={{ color: "var(--t-faint)" }}>
                     No photo yet
                   </div>
                 )}
               </div>
               <div className="flex-1">
                 <Label>{isEdit ? "Replace Photo" : "Upload Photo"}</Label>
-                <p className="text-xs mb-3" style={{ color: "var(--akp-gray-400)" }}>
+                <p className="text-[12px] mb-3" style={{ color: "var(--t-muted)" }}>
                   JPG, PNG, or WebP. Portrait orientation works best.
                   {isEdit && !headshot && " Leave blank to keep the current photo."}
                 </p>
@@ -497,13 +469,12 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-                  style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
+                  className="btn btn-ghost btn-sm"
                 >
                   {headshot ? "Change Photo" : isEdit ? "Replace Photo" : "Choose Photo"}
                 </button>
                 {headshot && (
-                  <p className="mt-2 text-xs" style={{ color: "var(--akp-gray-600)" }}>{headshot.name}</p>
+                  <p className="mt-2 text-[12px]" style={{ color: "var(--t-muted)" }}>{headshot.name}</p>
                 )}
               </div>
             </div>
@@ -613,23 +584,18 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
           )}
 
           {/* Submit */}
-          <div className="flex items-center gap-4 pt-2">
+          <div className="flex items-center gap-4 pt-2 pb-8">
             <button
               type="submit"
               disabled={submitting}
-              className="px-8 py-3 rounded-full text-sm font-bold transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: submitting ? "var(--akp-gray-400)" : "var(--akp-navy)",
-                color: "var(--akp-gold)",
-                boxShadow: "0 4px 16px rgba(10,34,64,0.2)",
-              }}
+              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? "Saving…" : isEdit ? "Save Changes" : "Save Senior Profile"}
             </button>
             <Link
               href="/admin/seniors"
-              className="text-sm font-medium transition-opacity hover:opacity-70"
-              style={{ color: "var(--akp-gray-600)" }}
+              className="text-[14px] font-medium transition-opacity hover:opacity-70"
+              style={{ color: "var(--t-secondary)" }}
             >
               Cancel
             </Link>

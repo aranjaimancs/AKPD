@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/auth";
 import NavLinks from "./NavLinks";
@@ -11,7 +12,6 @@ function getInitials(str: string): string {
 }
 
 export default async function Navbar() {
-  // getUser() validates the JWT with the Supabase auth server.
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,11 +19,9 @@ export default async function Navbar() {
 
   if (!user) return null;
 
-  // Authoritative role from the members table (not just JWT metadata).
   const member = await getCurrentMember();
   if (!member) return null;
 
-  // Profile data (name + avatar) from the profiles table.
   let profile: { full_name: string | null; avatar_url: string | null } | null = null;
   try {
     const { data } = await supabase
@@ -44,27 +42,29 @@ export default async function Navbar() {
     <header
       className="sticky top-0 z-50"
       style={{
-        background: "var(--akp-navy)",
-        borderBottom: "2px solid var(--akp-gold)",
-        boxShadow: "0 2px 20px rgba(0,0,0,0.25)",
+        background: "var(--s-0)",
+        borderBottom: "1px solid var(--b-default)",
+        boxShadow: "var(--shadow-xs)",
       }}
     >
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-8">
+      <div className="max-w-6xl mx-auto px-6 h-[56px] flex items-center gap-6">
+
         {/* ── Logo ── */}
         <Link
-          href="/seniors"
+          href="/people"
           className="flex items-center gap-2.5 shrink-0 group"
           aria-label="AKPD home"
         >
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-extrabold transition-transform group-hover:scale-105"
-            style={{ background: "var(--akp-gold)", color: "var(--akp-navy)" }}
-          >
-            AK
-          </div>
+          <Image
+            src="/aklogo.png"
+            alt="AKΨ UNC"
+            width={56}
+            height={56}
+            className="transition-all duration-200 group-hover:scale-105"
+          />
           <span
-            className="text-sm font-extrabold text-white tracking-[0.12em] uppercase"
-            style={{ fontFamily: "var(--font-display)" }}
+            className="text-[13px] font-extrabold tracking-[0.08em] uppercase"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
           >
             AKPD
           </span>
@@ -72,8 +72,8 @@ export default async function Navbar() {
 
         {/* ── Divider ── */}
         <div
-          className="h-5 w-px shrink-0"
-          style={{ background: "rgba(201,168,76,0.25)" }}
+          className="h-4 w-px shrink-0"
+          style={{ background: "var(--b-default)" }}
         />
 
         {/* ── Nav links ── */}

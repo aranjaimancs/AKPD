@@ -49,11 +49,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label
-        htmlFor={name}
-        className="text-xs font-bold uppercase tracking-wide"
-        style={{ color: "var(--akp-gray-600)" }}
-      >
+      <label htmlFor={name} className="input-label">
         {label}
         {required && <span style={{ color: "#dc2626" }}> *</span>}
       </label>
@@ -65,15 +61,10 @@ function Field({
         placeholder={placeholder}
         defaultValue={defaultValue ?? ""}
         step={type === "number" ? "any" : undefined}
-        className="w-full rounded-xl px-3.5 py-2 text-sm outline-none"
-        style={{
-          background: "var(--akp-off-white)",
-          border: "1px solid var(--akp-gray-200)",
-          color: "var(--akp-gray-800)",
-        }}
+        className="input"
       />
       {hint && (
-        <p className="text-[11px]" style={{ color: "var(--akp-gray-400)" }}>
+        <p className="text-[11px]" style={{ color: "var(--t-muted)" }}>
           {hint}
         </p>
       )}
@@ -94,25 +85,14 @@ function TextArea({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label
-        htmlFor={name}
-        className="text-xs font-bold uppercase tracking-wide"
-        style={{ color: "var(--akp-gray-600)" }}
-      >
-        {label}
-      </label>
+      <label htmlFor={name} className="input-label">{label}</label>
       <textarea
         id={name}
         name={name}
         rows={3}
         placeholder={placeholder}
         defaultValue={defaultValue ?? ""}
-        className="w-full rounded-xl px-3.5 py-2 text-sm outline-none resize-none"
-        style={{
-          background: "var(--akp-off-white)",
-          border: "1px solid var(--akp-gray-200)",
-          color: "var(--akp-gray-800)",
-        }}
+        className="input resize-none"
       />
     </div>
   );
@@ -133,11 +113,7 @@ function SelectField({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label
-        htmlFor={name}
-        className="text-xs font-bold uppercase tracking-wide"
-        style={{ color: "var(--akp-gray-600)" }}
-      >
+      <label htmlFor={name} className="input-label">
         {label}
         {required && <span style={{ color: "#dc2626" }}> *</span>}
       </label>
@@ -146,12 +122,7 @@ function SelectField({
         name={name}
         required={required}
         defaultValue={defaultValue ?? ""}
-        className="w-full rounded-xl px-3.5 py-2 text-sm outline-none"
-        style={{
-          background: "var(--akp-off-white)",
-          border: "1px solid var(--akp-gray-200)",
-          color: "var(--akp-gray-800)",
-        }}
+        className="input"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -197,54 +168,54 @@ function PersonModal({
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
-      style={{ background: "rgba(10,34,64,0.6)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(20,18,16,0.5)", backdropFilter: "blur(4px)" }}
       onPointerDown={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
     >
       <div
-        className="w-full max-w-2xl my-8 rounded-2xl flex flex-col"
+        className="w-full max-w-2xl my-8 rounded-2xl flex flex-col animate-scale-in"
         style={{
-          background: "var(--akp-white)",
-          boxShadow: "0 8px 48px rgba(10,34,64,0.2)",
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-xl)",
         }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-5"
-          style={{ borderBottom: "1px solid var(--akp-gray-200)" }}
+          style={{ borderBottom: "1px solid var(--b-subtle)" }}
         >
           <h2
-            className="text-lg font-extrabold"
-            style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+            className="text-[16px] font-bold"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
           >
             {person ? "Edit Person" : "Add Person"}
           </h2>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-gray-100 transition-colors"
-            style={{ color: "var(--akp-gray-400)" }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--s-1)"}
+            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = "transparent"}
           >
             ✕
           </button>
         </div>
 
         {state.success ? (
-          <div
-            className="flex flex-col items-center gap-3 py-12 px-6"
-            style={{ color: "var(--akp-navy)" }}
-          >
+          <div className="flex flex-col items-center gap-3 py-12 px-6">
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-              style={{ background: "rgba(201,168,76,0.15)" }}
+              style={{ background: "rgba(201,168,76,0.15)", color: "var(--akp-gold)" }}
             >
               ✓
             </div>
-            <p className="font-semibold">
+            <p className="font-semibold" style={{ color: "var(--t-primary)" }}>
               {person ? "Saved." : "Person added."}
             </p>
             {state.geocoded && (
-              <p className="text-sm text-center" style={{ color: "var(--akp-gray-600)" }}>
+              <p className="text-sm text-center" style={{ color: "var(--t-secondary)" }}>
                 Location was automatically geocoded and pinned on the map.
               </p>
             )}
@@ -300,10 +271,10 @@ function PersonModal({
                 defaultValue={person?.major}
               />
 
-              {/* Professional */}
+              {/* Professional section divider */}
               <div
                 className="sm:col-span-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest"
-                style={{ color: "var(--akp-gold)" }}
+                style={{ color: "var(--t-muted)" }}
               >
                 Professional
               </div>
@@ -337,10 +308,10 @@ function PersonModal({
                 defaultValue={person?.linkedin_url}
               />
 
-              {/* Location */}
+              {/* Location section divider */}
               <div
                 className="sm:col-span-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest"
-                style={{ color: "var(--akp-gold)" }}
+                style={{ color: "var(--t-muted)" }}
               >
                 Location
               </div>
@@ -364,8 +335,8 @@ function PersonModal({
                 <button
                   type="button"
                   onClick={() => setShowCoords((v) => !v)}
-                  className="text-xs font-semibold"
-                  style={{ color: "var(--akp-gold)" }}
+                  className="text-xs font-semibold transition-opacity hover:opacity-70"
+                  style={{ color: "var(--t-secondary)" }}
                 >
                   {showCoords ? "▼ Hide" : "▶ Override"} lat/lng manually
                 </button>
@@ -399,10 +370,10 @@ function PersonModal({
                 </>
               )}
 
-              {/* Extra */}
+              {/* Profile section divider */}
               <div
                 className="sm:col-span-2 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest"
-                style={{ color: "var(--akp-gold)" }}
+                style={{ color: "var(--t-muted)" }}
               >
                 Profile
               </div>
@@ -437,22 +408,20 @@ function PersonModal({
 
             {/* Footer */}
             <div
-              className="flex justify-end gap-3 px-6 py-4"
-              style={{ borderTop: "1px solid var(--akp-gray-200)" }}
+              className="flex justify-end gap-2 px-6 py-4"
+              style={{ borderTop: "1px solid var(--b-subtle)" }}
             >
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: "var(--akp-gray-100)", color: "var(--akp-gray-600)" }}
+                className="btn btn-ghost btn-sm"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={pending}
-                className="px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
-                style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
+                className="btn btn-primary btn-sm disabled:opacity-50"
               >
                 {pending ? "Saving…" : person ? "Save Changes" : "Add Person"}
               </button>
@@ -490,7 +459,7 @@ function PersonTableRow({
     <tr
       className="border-t transition-opacity"
       style={{
-        borderColor: "var(--akp-gray-200)",
+        borderColor: "var(--b-subtle)",
         opacity: isPending || removing ? 0.4 : 1,
       }}
     >
@@ -517,11 +486,11 @@ function PersonTableRow({
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: "var(--akp-navy)" }}>
+            <p className="text-sm font-semibold truncate" style={{ color: "var(--t-primary)" }}>
               {person.full_name}
             </p>
             {person.pledge_class && (
-              <p className="text-xs truncate" style={{ color: "var(--akp-gray-400)" }}>
+              <p className="text-xs truncate" style={{ color: "var(--t-muted)" }}>
                 {person.pledge_class}
               </p>
             )}
@@ -531,11 +500,11 @@ function PersonTableRow({
 
       {/* Job */}
       <td className="py-3 px-4 hidden sm:table-cell">
-        <p className="text-sm truncate" style={{ color: "var(--akp-gray-600)" }}>
+        <p className="text-sm truncate" style={{ color: "var(--t-secondary)" }}>
           {[person.title, person.company].filter(Boolean).join(" · ") || "—"}
         </p>
         {person.industry && (
-          <p className="text-xs" style={{ color: "var(--akp-gray-400)" }}>
+          <p className="text-xs" style={{ color: "var(--t-muted)" }}>
             {person.industry}
           </p>
         )}
@@ -546,10 +515,10 @@ function PersonTableRow({
         <div className="flex items-center gap-1.5">
           <span
             className="w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ background: hasPin ? "#22c55e" : "var(--akp-gray-300)" }}
+            style={{ background: hasPin ? "#22c55e" : "var(--b-strong)" }}
             title={hasPin ? "On map" : "No coordinates"}
           />
-          <p className="text-sm truncate" style={{ color: "var(--akp-gray-600)" }}>
+          <p className="text-sm truncate" style={{ color: "var(--t-secondary)" }}>
             {person.location_label ?? "—"}
           </p>
         </div>
@@ -563,15 +532,15 @@ function PersonTableRow({
               className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded w-fit"
               style={
                 person.member_type === "alumni"
-                  ? { background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }
-                  : { background: "rgba(10,34,64,0.08)", color: "var(--akp-navy)" }
+                  ? { background: "rgba(201,168,76,0.12)", color: "#78550a" }
+                  : { background: "rgba(10,34,64,0.07)", color: "var(--akp-navy)" }
               }
             >
               {person.member_type === "alumni" ? "Alumni" : "Current"}
             </span>
           )}
           {person.grad_year && (
-            <p className="text-xs" style={{ color: "var(--akp-gray-400)" }}>
+            <p className="text-xs" style={{ color: "var(--t-muted)" }}>
               {person.grad_year}
             </p>
           )}
@@ -583,8 +552,7 @@ function PersonTableRow({
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => onEdit(person)}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors"
-            style={{ color: "var(--akp-navy)", background: "var(--akp-gray-100)" }}
+            className="btn btn-ghost btn-sm"
           >
             Edit
           </button>
@@ -634,35 +602,20 @@ export default function PeopleAdminClient({ people }: { people: PersonRow[] }) {
 
   return (
     <>
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {[
-          { label: "Total", value: people.length },
-          { label: "On Map", value: onMapCount },
-          {
-            label: "Alumni",
-            value: people.filter((p) => p.member_type === "alumni").length,
-          },
-        ].map(({ label, value }) => (
-          <div
-            key={label}
-            className="rounded-2xl px-5 py-4"
-            style={{
-              background: "var(--akp-white)",
-              border: "1px solid var(--akp-gray-200)",
-            }}
-          >
-            <p
-              className="text-2xl font-extrabold"
-              style={{ color: "var(--akp-navy)" }}
-            >
-              {value}
-            </p>
-            <p className="text-xs font-semibold uppercase tracking-wide mt-0.5" style={{ color: "var(--akp-gray-400)" }}>
-              {label}
-            </p>
-          </div>
-        ))}
+      {/* Stats strip */}
+      <div className="flex gap-8 mb-8 pb-6" style={{ borderBottom: "1px solid var(--b-subtle)" }}>
+        <div className="stat-item">
+          <span className="stat-value">{people.length}</span>
+          <span className="stat-label">Total</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{onMapCount}</span>
+          <span className="stat-label">On Map</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{people.filter((p) => p.member_type === "alumni").length}</span>
+          <span className="stat-label">Alumni</span>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -671,17 +624,11 @@ export default function PeopleAdminClient({ people }: { people: PersonRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search people…"
-          className="w-full max-w-xs rounded-xl px-3.5 py-2 text-sm outline-none"
-          style={{
-            background: "var(--akp-white)",
-            border: "1px solid var(--akp-gray-200)",
-            color: "var(--akp-gray-800)",
-          }}
+          className="input max-w-xs"
         />
         <button
           onClick={openAdd}
-          className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
-          style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
+          className="btn btn-primary shrink-0"
         >
           + Add Person
         </button>
@@ -691,24 +638,24 @@ export default function PeopleAdminClient({ people }: { people: PersonRow[] }) {
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: "var(--akp-white)",
-          border: "1px solid var(--akp-gray-200)",
-          boxShadow: "0 1px 4px rgba(10,34,64,0.04)",
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-sm)",
         }}
       >
         <table className="w-full">
           <thead>
-            <tr style={{ background: "var(--akp-off-white)" }}>
-              <th className="text-left text-xs font-bold uppercase tracking-wide px-4 py-3" style={{ color: "var(--akp-gray-400)" }}>
+            <tr style={{ background: "var(--s-1)" }}>
+              <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3" style={{ color: "var(--t-muted)" }}>
                 Person
               </th>
-              <th className="text-left text-xs font-bold uppercase tracking-wide px-4 py-3 hidden sm:table-cell" style={{ color: "var(--akp-gray-400)" }}>
+              <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3 hidden sm:table-cell" style={{ color: "var(--t-muted)" }}>
                 Job
               </th>
-              <th className="text-left text-xs font-bold uppercase tracking-wide px-4 py-3 hidden md:table-cell" style={{ color: "var(--akp-gray-400)" }}>
+              <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3 hidden md:table-cell" style={{ color: "var(--t-muted)" }}>
                 Location
               </th>
-              <th className="text-left text-xs font-bold uppercase tracking-wide px-4 py-3 hidden sm:table-cell" style={{ color: "var(--akp-gray-400)" }}>
+              <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3 hidden sm:table-cell" style={{ color: "var(--t-muted)" }}>
                 Type
               </th>
               <th className="px-4 py-3" />
@@ -720,7 +667,7 @@ export default function PeopleAdminClient({ people }: { people: PersonRow[] }) {
                 <td
                   colSpan={5}
                   className="text-center py-12 text-sm"
-                  style={{ color: "var(--akp-gray-400)" }}
+                  style={{ color: "var(--t-muted)" }}
                 >
                   {people.length === 0
                     ? "No people yet. Add someone to get started."
@@ -736,7 +683,7 @@ export default function PeopleAdminClient({ people }: { people: PersonRow[] }) {
       </div>
 
       {/* Geocoding note */}
-      <p className="mt-4 text-xs text-center" style={{ color: "var(--akp-gray-400)" }}>
+      <p className="mt-4 text-xs text-center" style={{ color: "var(--t-faint)" }}>
         Location labels are geocoded via{" "}
         <a
           href="https://nominatim.openstreetmap.org"

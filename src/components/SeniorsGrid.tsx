@@ -41,44 +41,34 @@ export default function SeniorsGrid({ seniors }: Props) {
 
   return (
     <div>
-      {/* ── Filter bar ── */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: "var(--akp-gray-400)" }}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search by name, company, or major…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-xl border pl-10 pr-4 py-3 text-sm bg-white focus:outline-none focus:ring-2"
-            style={{
-              borderColor: "var(--akp-gray-200)",
-              color: "var(--akp-gray-800)",
-              boxShadow: "0 1px 4px rgba(10,34,64,0.04)",
-            }}
-          />
-        </div>
+      {/* ── Search ── */}
+      <div className="relative mb-5">
+        <svg
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+          style={{ color: "var(--t-muted)" }}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search by name, company, or major…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="input pl-10"
+          style={{ maxWidth: 400 }}
+        />
       </div>
 
-      {/* ── Filter rows ── */}
-      <div className="space-y-3 mb-10">
-        {/* Class year pills */}
+      {/* ── Filter pills ── */}
+      <div className="space-y-2.5 mb-10">
         {allYears.length > 1 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="text-[10px] font-bold tracking-[0.15em] uppercase mr-1"
-              style={{ color: "var(--akp-gray-400)" }}
-            >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] mr-1" style={{ color: "var(--t-muted)" }}>
               Class
             </span>
             {["All", ...allYears.map(String)].map((year) => {
@@ -89,20 +79,7 @@ export default function SeniorsGrid({ seniors }: Props) {
                   onClick={() =>
                     setActiveYear(year === "All" ? null : activeYear === parseInt(year) ? null : parseInt(year))
                   }
-                  className="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200"
-                  style={
-                    isActive
-                      ? {
-                          background: "var(--akp-navy)",
-                          color: "var(--akp-gold)",
-                          boxShadow: "0 2px 8px rgba(10,34,64,0.25)",
-                        }
-                      : {
-                          background: "var(--akp-white)",
-                          color: "var(--akp-gray-600)",
-                          border: "1px solid var(--akp-gray-200)",
-                        }
-                  }
+                  className={`pill ${isActive ? "pill-active" : ""}`}
                 >
                   {year === "All" ? "All Classes" : `Class of ${year}`}
                 </button>
@@ -111,13 +88,9 @@ export default function SeniorsGrid({ seniors }: Props) {
           </div>
         )}
 
-        {/* Track / tag pills */}
         {allTags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="text-[10px] font-bold tracking-[0.15em] uppercase mr-1"
-              style={{ color: "var(--akp-gray-400)" }}
-            >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] mr-1" style={{ color: "var(--t-muted)" }}>
               Track
             </span>
             {["All", ...allTags].map((tag) => {
@@ -126,20 +99,7 @@ export default function SeniorsGrid({ seniors }: Props) {
                 <button
                   key={tag}
                   onClick={() => setActiveTag(tag === "All" ? null : tag === activeTag ? null : tag)}
-                  className="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200"
-                  style={
-                    isActive
-                      ? {
-                          background: "var(--akp-navy)",
-                          color: "var(--akp-gold)",
-                          boxShadow: "0 2px 8px rgba(10,34,64,0.25)",
-                        }
-                      : {
-                          background: "var(--akp-white)",
-                          color: "var(--akp-gray-600)",
-                          border: "1px solid var(--akp-gray-200)",
-                        }
-                  }
+                  className={`pill ${isActive ? "pill-active" : ""}`}
                 >
                   {tag === "All" ? "All Tracks" : tag}
                 </button>
@@ -149,24 +109,24 @@ export default function SeniorsGrid({ seniors }: Props) {
         )}
       </div>
 
-      {/* ── Results label ── */}
-      <p
-        className="text-xs font-semibold tracking-widest uppercase mb-6"
-        style={{ color: "var(--akp-gray-400)" }}
-      >
+      {/* ── Results count ── */}
+      <p className="text-[12px] font-medium mb-6" style={{ color: "var(--t-muted)" }}>
         {filtered.length === seniors.length
-          ? `${seniors.length} Member${seniors.length !== 1 ? "s" : ""}`
-          : `${filtered.length} of ${seniors.length} Members`}
+          ? `${seniors.length} profile${seniors.length !== 1 ? "s" : ""}`
+          : `${filtered.length} of ${seniors.length} profiles`}
       </p>
 
       {/* ── Grid ── */}
       {filtered.length === 0 ? (
-        <div className="text-center py-24" style={{ color: "var(--akp-gray-400)" }}>
-          <p className="text-lg mb-1">No results</p>
-          <p className="text-sm">Try adjusting your search or clearing the filter.</p>
+        <div
+          className="text-center py-24 rounded-2xl"
+          style={{ background: "var(--s-0)", border: "1px dashed var(--b-default)" }}
+        >
+          <p className="text-base font-semibold mb-1" style={{ color: "var(--t-primary)" }}>No results</p>
+          <p className="text-sm" style={{ color: "var(--t-muted)" }}>Try adjusting your search or clearing the filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((senior, i) => (
             <SeniorCard key={senior.slug} senior={senior} index={i} />
           ))}
@@ -187,120 +147,99 @@ function SeniorCard({ senior, index }: { senior: SeniorIndex; index: number }) {
     <Link
       href={`/seniors/${senior.slug}`}
       className="group block animate-fade-up"
-      style={{ animationDelay: `${index * 60}ms` }}
+      style={{ animationDelay: `${Math.min(index * 50, 400)}ms` }}
     >
       <article
-        className="relative overflow-hidden rounded-2xl card-shadow card-transition group-hover:card-shadow-hover group-hover:-translate-y-2"
-        style={{ aspectRatio: "3 / 4" }}
+        className="card card-interactive overflow-hidden flex flex-col"
+        style={{ borderRadius: "var(--r-xl)" }}
       >
-        {/* Photo */}
-        <Image
-          src={headshotUrl}
-          alt={senior.name}
-          fill
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-        />
-
-        {/* Pledge class badge — top left */}
-        <div className="absolute top-4 left-4 z-20">
-          <span
-            className="text-[10px] font-bold tracking-[0.15em] uppercase px-3 py-1 rounded-full"
+        {/* Photo — 4:3 aspect, not full card */}
+        <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
+          <Image
+            src={headshotUrl}
+            alt={senior.name}
+            fill
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-103"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+          {/* Subtle bottom fade into card */}
+          <div
+            className="absolute inset-0"
             style={{
-              background: "rgba(10,34,64,0.75)",
-              color: "var(--akp-gold)",
-              backdropFilter: "blur(8px)",
-              border: "1px solid rgba(201,168,76,0.3)",
+              background: "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.18) 100%)",
             }}
-          >
-            {senior.pledgeClass}
-          </span>
+          />
+          {/* Pledge class badge */}
+          <div className="absolute top-3 left-3 z-10">
+            <span
+              className="text-[10px] font-bold tracking-[0.12em] uppercase px-2.5 py-1 rounded-full"
+              style={{
+                background: "rgba(255,255,255,0.92)",
+                color: "var(--akp-navy)",
+                backdropFilter: "blur(8px)",
+                border: "1px solid rgba(255,255,255,0.5)",
+              }}
+            >
+              {senior.pledgeClass}
+            </span>
+          </div>
         </div>
 
-        {/* Gradient overlay — always present, deepens on hover */}
-        <div
-          className="absolute inset-0 z-10 transition-opacity duration-500"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(8,26,52,0.97) 0%, rgba(8,26,52,0.82) 38%, rgba(8,26,52,0.35) 62%, transparent 100%)",
-          }}
-        />
-
-        {/* Content layer */}
-        <div className="absolute inset-0 z-20 flex flex-col justify-end p-6">
-          {/* Tags — slide up on hover */}
-          {senior.tags.length > 0 && (
-            <div
-              className="flex flex-wrap gap-1.5 mb-3 translate-y-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+        {/* Info panel — always visible */}
+        <div className="flex flex-col gap-3 p-5 flex-1">
+          {/* Name + academic */}
+          <div>
+            <h2
+              className="text-base font-bold leading-snug mb-0.5"
+              style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
             >
-              {senior.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full"
-                  style={{
-                    background: "rgba(201,168,76,0.18)",
-                    color: "var(--akp-gold-light)",
-                    border: "1px solid rgba(201,168,76,0.3)",
-                  }}
-                >
+              {senior.name}
+            </h2>
+            {academicLine && (
+              <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-muted)" }}>
+                {academicLine}
+              </p>
+            )}
+          </div>
+
+          {/* Tags */}
+          {senior.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {senior.tags.slice(0, 3).map((tag) => (
+                <span key={tag} className="badge badge-neutral text-[10px]">
                   {tag}
                 </span>
               ))}
+              {senior.tags.length > 3 && (
+                <span className="badge badge-neutral text-[10px]">+{senior.tags.length - 3}</span>
+              )}
             </div>
           )}
 
-          {/* Summary — slide up on hover */}
-          {senior.summary && (
-            <p
-              className="text-xs leading-relaxed text-blue-100/80 mb-3 line-clamp-2 translate-y-3 opacity-0 transition-all duration-300 delay-75 group-hover:translate-y-0 group-hover:opacity-100"
-            >
-              {senior.summary}
-            </p>
-          )}
-
-          {/* Name */}
-          <h2
-            className="text-2xl font-bold text-white leading-tight mb-1"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {senior.name}
-          </h2>
-
-          {/* Academics */}
-          <p className="text-xs text-blue-200/70 mb-3">{academicLine}</p>
-
-          {/* Divider */}
+          {/* Destination — anchored to bottom */}
           <div
-            className="h-px mb-3 transition-all duration-300 group-hover:opacity-100 opacity-40"
-            style={{ background: "var(--akp-gold)" }}
-          />
-
-          {/* Destination */}
-          <div className="flex items-end justify-between gap-2">
+            className="mt-auto pt-3 flex items-end justify-between gap-2"
+            style={{ borderTop: "1px solid var(--b-subtle)" }}
+          >
             <div>
-              <p className="text-xs text-white/60 mb-0.5">{senior.destinationTitle}</p>
+              <p className="text-[11px] mb-0.5" style={{ color: "var(--t-muted)" }}>
+                {senior.destinationTitle}
+              </p>
               <p
-                className="text-sm font-semibold leading-snug"
-                style={{ color: "var(--akp-gold)" }}
+                className="text-[13px] font-semibold leading-snug"
+                style={{ color: "var(--akp-navy)" }}
               >
                 {senior.destinationCompany}
               </p>
             </div>
-            {/* Arrow — hover only */}
             <span
-              className="shrink-0 text-xs font-bold tracking-wide translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100"
+              className="text-[11px] font-semibold shrink-0 transition-all duration-200 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0"
               style={{ color: "var(--akp-gold)" }}
             >
               View →
             </span>
           </div>
         </div>
-
-        {/* Gold border on hover */}
-        <div
-          className="absolute inset-0 rounded-2xl z-30 pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-          style={{ border: "2px solid rgba(201,168,76,0.55)" }}
-        />
       </article>
     </Link>
   );

@@ -23,104 +23,21 @@ export default async function MembersPage() {
   const members = (data ?? []) as Member[];
 
   return (
-    <main className="flex-1">
-      {/* ── Hero ── */}
-      <div className="navy-texture relative overflow-hidden">
-        <div
-          className="pointer-events-none absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-10"
-          style={{ background: "radial-gradient(circle, var(--akp-gold) 0%, transparent 70%)" }}
-        />
-        <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-20">
-          <div className="mb-4">
-            <a
-              href="/admin"
-              className="text-xs font-semibold transition-opacity hover:opacity-70"
-              style={{ color: "rgba(201,168,76,0.7)" }}
-            >
-              ← Admin
-            </a>
-          </div>
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-px w-8" style={{ background: "var(--akp-gold)" }} />
-            <span
-              className="text-xs font-bold tracking-[0.2em] uppercase"
-              style={{ color: "var(--akp-gold)" }}
-            >
-              Alpha Kappa Psi · Admin
-            </span>
-          </div>
-
-          <h1
-            className="text-5xl sm:text-6xl font-extrabold leading-[1.05] text-white mb-6"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Member
-            <br />
-            <span style={{ color: "var(--akp-gold)" }}>Access.</span>
-          </h1>
-          <p className="text-blue-200 text-lg max-w-lg leading-relaxed">
-            Manage who can sign in and what they can do. Adding someone here
-            is what unlocks their access — Google login alone isn't enough.
-          </p>
+    <main className="flex-1" style={{ background: "var(--s-page)", minHeight: "100vh" }}>
+      {/* ── Breadcrumb bar ── */}
+      <div style={{ background: "var(--s-0)", borderBottom: "1px solid var(--b-default)" }}>
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-2">
+          <a href="/admin" className="text-[13px] transition-opacity hover:opacity-70" style={{ color: "var(--t-muted)" }}>Admin</a>
+          <span style={{ color: "var(--b-strong)" }}>/</span>
+          <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>Members</span>
+          <span className="ml-auto text-[12px]" style={{ color: "var(--t-faint)" }}>
+            {members.length} total · {members.filter((m) => m.role === "admin").length} admin{members.filter((m) => m.role === "admin").length !== 1 ? "s" : ""}
+          </span>
         </div>
-
-        {/* Stats */}
-        <div className="border-t" style={{ borderColor: "rgba(201,168,76,0.2)" }}>
-          <div className="max-w-6xl mx-auto px-6 py-5 flex gap-8">
-            <div>
-              <p className="text-2xl font-extrabold text-white">{members.length}</p>
-              <p className="text-xs uppercase tracking-wide" style={{ color: "var(--akp-gold)" }}>Total</p>
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-white">
-                {members.filter((m) => m.role === "admin").length}
-              </p>
-              <p className="text-xs uppercase tracking-wide" style={{ color: "var(--akp-gold)" }}>Admins</p>
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-white">
-                {members.filter((m) => m.auth_user_id).length}
-              </p>
-              <p className="text-xs uppercase tracking-wide" style={{ color: "var(--akp-gold)" }}>Signed in</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="h-[3px]" style={{ background: "var(--akp-gold)" }} />
       </div>
 
-      {/* ── Table ── */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        {/* Info callout */}
-        <div
-          className="rounded-xl px-5 py-4 mb-8 text-sm flex gap-3 items-start"
-          style={{
-            background: "rgba(201,168,76,0.06)",
-            border: "1px solid rgba(201,168,76,0.2)",
-          }}
-        >
-          <svg
-            className="shrink-0 mt-0.5"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="var(--akp-gold)"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <div style={{ color: "var(--akp-gray-700)" }}>
-            <strong style={{ color: "var(--akp-navy)" }}>Role rules:</strong> Admins can add/edit/delete seniors,
-            manage opportunities, and access this page. Members can read everything but cannot write.
-            The{" "}
-            <span className="font-semibold" style={{ color: "var(--akp-navy)" }}>Linked</span>{" "}
-            dot turns green once someone has signed in at least once via Google.
-          </div>
-        </div>
-
+      {/* ── Content ── */}
+      <div className="max-w-6xl mx-auto px-6 py-8">
         <MembersClient members={members} currentEmail={user?.email ?? ""} />
       </div>
     </main>

@@ -15,45 +15,22 @@ export default async function AdminPeoplePage() {
     .order("full_name");
 
   return (
-    <div
-      className="min-h-screen px-4 py-10 sm:px-8"
-      style={{ background: "var(--akp-off-white)" }}
-    >
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <a
-              href="/admin"
-              className="inline-block text-xs font-semibold mb-2 transition-opacity hover:opacity-70"
-              style={{ color: "var(--akp-gold)" }}
-            >
-              ← Admin
-            </a>
-            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--akp-gold)" }}>
-              Admin
-            </p>
-            <h1
-              className="text-3xl font-extrabold"
-              style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
-            >
-              People Directory
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--akp-gray-600)" }}>
-              {data?.length ?? 0} people — locations are geocoded automatically when you save
-            </p>
-          </div>
-          <a
-            href="/people"
-            className="text-sm font-semibold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
-            style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
-          >
-            ← View Map
-          </a>
+    <main className="flex-1" style={{ background: "var(--s-page)", minHeight: "100vh" }}>
+      {/* ── Breadcrumb bar ── */}
+      <div style={{ background: "var(--s-0)", borderBottom: "1px solid var(--b-default)" }}>
+        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-2">
+          <a href="/admin" className="text-[13px] transition-opacity hover:opacity-70" style={{ color: "var(--t-muted)" }}>Admin</a>
+          <span style={{ color: "var(--b-strong)" }}>/</span>
+          <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>People Directory</span>
+          <span className="ml-auto text-[12px]" style={{ color: "var(--t-faint)" }}>{data?.length ?? 0} people</span>
+          <a href="/people" className="btn btn-ghost btn-sm">View Map</a>
         </div>
+      </div>
 
+      {/* ── Content ── */}
+      <div className="max-w-5xl mx-auto px-6 py-8">
         <PeopleAdminClient people={(data ?? []) as PersonRow[]} />
       </div>
-    </div>
+    </main>
   );
 }

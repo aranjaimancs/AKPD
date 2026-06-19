@@ -19,28 +19,28 @@ export default function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
   const links = isAdmin ? [...MEMBER_LINKS, ...ADMIN_LINKS] : MEMBER_LINKS;
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-center gap-0.5">
       {links.map(({ href, label }) => {
         const active = pathname === href || pathname.startsWith(href + "/");
-        const adminLink = href.startsWith("/admin");
+        const isAdmin = href.startsWith("/admin");
         return (
           <Link
             key={href}
             href={href}
-            className="relative px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200"
+            className="relative px-3 py-1.5 rounded-md text-[13px] font-medium transition-all duration-150"
             style={{
               color: active
-                ? "var(--akp-gold)"
-                : adminLink
-                  ? "rgba(201,168,76,0.7)"
-                  : "rgba(255,255,255,0.65)",
-              background: active ? "rgba(201,168,76,0.1)" : "transparent",
+                ? "var(--t-primary)"
+                : "var(--t-secondary)",
+              background: active ? "var(--s-1)" : "transparent",
+              fontWeight: active ? 600 : 500,
             }}
           >
             {label}
+            {/* Active underline */}
             {active && (
               <span
-                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full"
                 style={{ background: "var(--akp-gold)" }}
               />
             )}

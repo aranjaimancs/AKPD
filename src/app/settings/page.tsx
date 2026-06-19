@@ -42,28 +42,21 @@ export default async function SettingsPage() {
   } catch {}
 
   return (
-    <main className="flex-1">
-      {/* Hero */}
-      <div className="navy-texture relative overflow-hidden">
-        <div className="relative max-w-3xl mx-auto px-6 pt-10 pb-12">
+    <main className="flex-1" style={{ background: "var(--s-page)" }}>
+      {/* ── Title bar ── */}
+      <div style={{ background: "var(--s-0)", borderBottom: "1px solid var(--b-default)" }}>
+        <div className="max-w-2xl mx-auto px-6 py-4">
           <h1
-            className="text-3xl font-extrabold text-white mb-1"
-            style={{ fontFamily: "var(--font-display)" }}
+            className="text-[17px] font-bold"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)", letterSpacing: "-0.01em" }}
           >
-            Profile & Settings
+            Settings
           </h1>
-          <p className="text-blue-200/70 text-sm">
-            Update your photo, name, and profile info.
-          </p>
         </div>
-        <div className="h-[3px]" style={{ background: "var(--akp-gold)" }} />
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <SettingsForm
-          initialData={profile}
-          email={user.email!}
-        />
+      <div className="max-w-2xl mx-auto px-6 py-10">
+        <SettingsForm initialData={profile} email={user.email!} />
       </div>
     </main>
   );

@@ -8,35 +8,33 @@ import Link from "next/link";
 export default function NotAuthorizedPage() {
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ background: "var(--akp-navy)" }}
+      className="min-h-screen flex flex-col items-center justify-center px-6"
+      style={{ background: "var(--s-page)" }}
     >
+      {/* Ambient glow */}
       <div
-        className="pointer-events-none fixed inset-0 opacity-30"
+        className="pointer-events-none fixed inset-0"
         style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(201,168,76,0.15) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
+          background:
+            "radial-gradient(ellipse 60% 40% at 50% 30%, rgba(10,34,64,0.04) 0%, transparent 100%)",
         }}
       />
 
-      <div
-        className="relative z-10 w-full max-w-sm rounded-3xl p-10 text-center"
-        style={{
-          background: "var(--akp-white)",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
-        }}
-      >
+      <div className="relative z-10 w-full max-w-sm text-center">
         {/* Icon */}
         <div
-          className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
-          style={{ background: "rgba(201,168,76,0.12)" }}
+          className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-6"
+          style={{
+            background: "var(--s-1)",
+            border: "1px solid var(--b-default)",
+            boxShadow: "var(--shadow-sm)",
+          }}
         >
           <svg
-            width="24"
-            height="24"
+            width="20"
+            height="20"
             fill="none"
-            stroke="var(--akp-navy)"
+            stroke="var(--t-secondary)"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -48,30 +46,32 @@ export default function NotAuthorizedPage() {
         </div>
 
         <h1
-          className="text-xl font-extrabold mb-2"
+          className="text-xl font-bold mb-2"
           style={{
-            color: "var(--akp-navy)",
+            color: "var(--t-primary)",
             fontFamily: "var(--font-display)",
+            letterSpacing: "-0.01em",
           }}
         >
           Not authorised
         </h1>
         <p
-          className="text-sm leading-relaxed mb-6"
-          style={{ color: "var(--akp-gray-600)" }}
+          className="text-[14px] leading-relaxed mb-8"
+          style={{ color: "var(--t-secondary)" }}
         >
-          Your Google account isn't on the member access list. If you believe
-          this is a mistake, contact a chapter admin to be added.
+          Your Google account isn&apos;t on the member access list. If you
+          believe this is a mistake, contact a chapter admin to be added.
         </p>
 
-        <Link
-          href="/login"
-          className="inline-block px-5 py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
-          style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
-        >
+        <Link href="/login" className="btn btn-primary">
           Back to sign in
         </Link>
       </div>
+
+      {/* Footer */}
+      <p className="absolute bottom-6 text-[11px]" style={{ color: "var(--t-faint)" }}>
+        Alpha Kappa Psi · Delta Chapter
+      </p>
     </div>
   );
 }

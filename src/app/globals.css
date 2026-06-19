@@ -3,8 +3,14 @@
 /* Leaflet CSS — must be global; Turbopack can't tree-shake these */
 @import "leaflet/dist/leaflet.css";
 
-/* ── AKPsi brand tokens ─────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   AKPsi Design System — v2
+   Direction: warm minimalism. White surfaces, navy as a brand anchor (not
+   wallpaper), gold reserved for the 2–3 most important moments per page.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 :root {
+  /* ── Brand anchors (unchanged) ────────────────────────────────────────── */
   --akp-navy:        #0a2240;
   --akp-navy-mid:    #0d2d54;
   --akp-navy-light:  #1a3f6f;
@@ -13,15 +19,54 @@
   --akp-gold-light:  #e0c070;
   --akp-gold-muted:  #f5ead0;
 
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  --s-page:     #fafaf8;   /* page background — warm paper white            */
+  --s-0:        #ffffff;   /* card / panel surface                          */
+  --s-1:        #f5f4f0;   /* inset / secondary surface (inputs, sidebars)  */
+  --s-2:        #eeece7;   /* subtle divider background                     */
+
+  /* ── Borders ──────────────────────────────────────────────────────────── */
+  --b-subtle:   #eeece7;   /* barely-there divider                          */
+  --b-default:  #e2dfd7;   /* standard card / input border                  */
+  --b-strong:   #cbc7bc;   /* emphasis border                               */
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --t-primary:  #141210;   /* near-black warm text                          */
+  --t-secondary:#54504a;   /* secondary labels                              */
+  --t-muted:    #8a8278;   /* placeholder / metadata                        */
+  --t-faint:    #b8b2a8;   /* disabled / very low emphasis                  */
+
+  /* ── Interactive ──────────────────────────────────────────────────────── */
+  --i-navy:     #0a2240;
+  --i-navy-hover: #0d2d54;
+  --i-gold-bg:  rgba(201,168,76,0.10);
+  --i-gold-border: rgba(201,168,76,0.30);
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-xs:  0 1px 2px rgba(20,18,16,0.04);
+  --shadow-sm:  0 1px 3px rgba(20,18,16,0.06), 0 4px 12px rgba(20,18,16,0.04);
+  --shadow-md:  0 2px 6px rgba(20,18,16,0.05), 0 8px 24px rgba(20,18,16,0.07);
+  --shadow-lg:  0 4px 12px rgba(20,18,16,0.06), 0 20px 48px rgba(20,18,16,0.10);
+  --shadow-xl:  0 8px 24px rgba(20,18,16,0.08), 0 40px 80px rgba(20,18,16,0.14);
+
+  /* ── Radii ────────────────────────────────────────────────────────────── */
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-2xl:  24px;
+
+  /* ── Legacy aliases (keep so existing code doesn't break) ────────────── */
   --akp-white:       #ffffff;
-  --akp-off-white:   #f7f6f2;
-  --akp-gray-100:    #f0efe9;
-  --akp-gray-200:    #e2e0d8;
-  --akp-gray-400:    #a0998a;
-  --akp-gray-600:    #6b6358;
-  --akp-gray-800:    #1e1c18;
+  --akp-off-white:   var(--s-page);
+  --akp-gray-100:    var(--s-1);
+  --akp-gray-200:    var(--b-default);
+  --akp-gray-400:    var(--t-muted);
+  --akp-gray-600:    var(--t-secondary);
+  --akp-gray-800:    var(--t-primary);
 }
 
+/* ── Tailwind theme extension ───────────────────────────────────────────── */
 @theme inline {
   --color-navy:        var(--akp-navy);
   --color-navy-mid:    var(--akp-navy-mid);
@@ -29,75 +74,411 @@
   --color-gold:        var(--akp-gold);
   --color-gold-light:  var(--akp-gold-light);
   --color-gold-muted:  var(--akp-gold-muted);
-  --color-off-white:   var(--akp-off-white);
-  --color-ink:         var(--akp-gray-800);
-  --color-muted:       var(--akp-gray-600);
-  --color-subtle:      var(--akp-gray-400);
-  --color-border:      var(--akp-gray-200);
+  --color-page:        var(--s-page);
+  --color-surface:     var(--s-0);
+  --color-surface-1:   var(--s-1);
+  --color-off-white:   var(--s-page);
+  --color-ink:         var(--t-primary);
+  --color-muted:       var(--t-secondary);
+  --color-subtle:      var(--t-muted);
+  --color-faint:       var(--t-faint);
+  --color-border:      var(--b-default);
+  --color-border-subtle: var(--b-subtle);
 
   --font-sans:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-display);
 }
 
-/* ── Base ───────────────────────────────────────────────────────────────── */
+/* ── Base reset ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
 
 body {
-  background: var(--akp-off-white);
-  color: var(--akp-gray-800);
+  background: var(--s-page);
+  color: var(--t-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Navy dot-grid texture ──────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   PAGE HEADER SYSTEM
+   Three modes:
+   .page-hero       — full-height brand statement (Seniors landing only)
+   .page-banner     — compact utility header (Opportunities, Recruitment, etc.)
+   .page-cap        — minimal title cap (Settings, Admin sub-pages)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Shared header foundation ─────────────────────────────────────────── */
+.page-hero,
+.page-banner,
+.page-cap {
+  position: relative;
+  overflow: hidden;
+  background: var(--s-0);
+  border-bottom: 1px solid var(--b-default);
+}
+
+/* Subtle radial glow in top-right — applied to hero and banner */
+.page-hero::before,
+.page-banner::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* ── Full hero ──────────────────────────────────────────────────────────── */
+.page-hero {
+  padding: 72px 0 80px;
+}
+
+/* ── Compact banner ─────────────────────────────────────────────────────── */
+.page-banner {
+  padding: 40px 0 44px;
+}
+
+/* ── Minimal cap ────────────────────────────────────────────────────────── */
+.page-cap {
+  padding: 28px 0 32px;
+}
+
+/* ── Eyebrow label ──────────────────────────────────────────────────────── */
+.page-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--akp-gold);
+  margin-bottom: 20px;
+}
+.page-eyebrow::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 1.5px;
+  background: var(--akp-gold);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* ── Display heading ────────────────────────────────────────────────────── */
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--t-primary);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.page-title-lg { font-size: clamp(2.5rem, 5vw, 4rem); }
+.page-title-md { font-size: clamp(1.75rem, 3vw, 2.5rem); }
+.page-title-sm { font-size: 1.375rem; }
+
+.page-title em {
+  font-style: normal;
+  color: var(--akp-gold);
+}
+
+/* ── Subtitle ───────────────────────────────────────────────────────────── */
+.page-subtitle {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--t-secondary);
+  max-width: 480px;
+  margin-top: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CARD SYSTEM
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--s-0);
+  border: 1px solid var(--b-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-interactive {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease;
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--b-strong);
+}
+
+/* Legacy aliases */
+.card-shadow       { box-shadow: var(--shadow-md); }
+.card-shadow-hover { box-shadow: var(--shadow-xl); }
+.card-transition   {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BUTTON SYSTEM
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  padding: 9px 18px;
+  transition: all 0.18s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--akp-navy);
+  color: #ffffff;
+}
+.btn-primary:hover {
+  background: var(--i-navy-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-gold {
+  background: var(--akp-gold);
+  color: var(--akp-navy);
+  font-weight: 700;
+}
+.btn-gold:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(201,168,76,0.3);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--t-secondary);
+  border: 1px solid var(--b-default);
+}
+.btn-ghost:hover {
+  background: var(--s-1);
+  border-color: var(--b-strong);
+  color: var(--t-primary);
+}
+
+.btn-sm {
+  font-size: 0.8125rem;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BADGE / PILL SYSTEM
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge-navy {
+  background: rgba(10,34,64,0.07);
+  color: var(--akp-navy);
+}
+
+.badge-gold {
+  background: rgba(201,168,76,0.12);
+  color: #996b1a;
+  border: 1px solid rgba(201,168,76,0.25);
+}
+
+.badge-neutral {
+  background: var(--s-1);
+  color: var(--t-secondary);
+  border: 1px solid var(--b-default);
+}
+
+/* ── Filter pill (toggle) ─────────────────────────────────────────────── */
+.pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--b-default);
+  background: var(--s-0);
+  color: var(--t-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.pill:hover {
+  border-color: var(--b-strong);
+  color: var(--t-primary);
+  background: var(--s-1);
+}
+.pill-active {
+  background: var(--akp-navy);
+  color: #ffffff;
+  border-color: var(--akp-navy);
+}
+.pill-active:hover {
+  background: var(--i-navy-hover);
+  border-color: var(--i-navy-hover);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FORM INPUTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.input {
+  width: 100%;
+  background: var(--s-0);
+  border: 1px solid var(--b-default);
+  border-radius: var(--r-md);
+  padding: 9px 14px;
+  font-size: 0.875rem;
+  color: var(--t-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+.input::placeholder { color: var(--t-muted); }
+.input:focus {
+  border-color: var(--akp-navy);
+  box-shadow: 0 0 0 3px rgba(10,34,64,0.08);
+}
+
+.input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SECTION DIVIDER
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.section-label h2 {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--t-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--b-subtle);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   STAT ITEM
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--t-primary);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--t-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NAVY TEXTURE (kept for opt-in use — e.g. login page, advice cards)
+   ───────────────────────────────────────────────────────────────────────────── */
 .navy-texture {
   background-color: var(--akp-navy);
-  background-image: radial-gradient(circle, rgba(201,168,76,0.12) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(circle, rgba(201,168,76,0.10) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-/* ── Card shadow system ─────────────────────────────────────────────────── */
-.card-shadow {
-  box-shadow:
-    0 1px 2px rgba(10,34,64,0.04),
-    0 4px 16px rgba(10,34,64,0.07),
-    0 12px 40px rgba(10,34,64,0.06);
-}
+/* ─────────────────────────────────────────────────────────────────────────────
+   ANIMATIONS
+   ───────────────────────────────────────────────────────────────────────────── */
 
-.card-shadow-hover {
-  box-shadow:
-    0 4px 8px rgba(10,34,64,0.06),
-    0 16px 40px rgba(10,34,64,0.14),
-    0 40px 80px rgba(10,34,64,0.12);
-}
-
-/* ── Transitions ────────────────────────────────────────────────────────── */
-.card-transition {
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* ── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1);    }
 }
 
 .animate-fade-up {
-  animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s ease both;
+}
+.animate-scale-in {
+  animation: scaleIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ── Admin hub cards ────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   ADMIN HUB CARDS (updated)
+   ───────────────────────────────────────────────────────────────────────────── */
 .admin-hub-card {
-  border: 1.5px solid var(--akp-navy);
-  box-shadow: 0 1px 2px rgba(10,34,64,0.04), 0 4px 16px rgba(10,34,64,0.07);
+  border: 1px solid var(--b-default);
+  box-shadow: var(--shadow-sm);
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 .admin-hub-card:hover {
-  border-color: var(--akp-gold);
-  box-shadow: 0 4px 8px rgba(10,34,64,0.06), 0 16px 40px rgba(10,34,64,0.14);
+  border-color: var(--b-strong);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SCROLLBAR (subtle)
+   ───────────────────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--b-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--t-muted); }

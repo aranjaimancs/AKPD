@@ -24,61 +24,61 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(10,34,64,0.6)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(20,18,16,0.5)", backdropFilter: "blur(4px)" }}
       onPointerDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       <div
-        className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-5"
+        className="w-full max-w-md rounded-2xl flex flex-col animate-scale-in"
         style={{
-          background: "var(--akp-white)",
-          boxShadow: "0 8px 48px rgba(10,34,64,0.2)",
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-xl)",
         }}
       >
-        <div className="flex items-center justify-between">
+        {/* Modal header */}
+        <div
+          className="flex items-center justify-between px-6 py-5"
+          style={{ borderBottom: "1px solid var(--b-subtle)" }}
+        >
           <h2
-            className="text-lg font-extrabold"
-            style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+            className="text-[16px] font-bold"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
           >
             Add Member
           </h2>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-gray-100 transition-colors"
-            style={{ color: "var(--akp-gray-400)" }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--s-1)"}
+            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = "transparent"}
           >
             ✕
           </button>
         </div>
 
         {state.success ? (
-          <div className="flex flex-col items-center gap-2 py-6" style={{ color: "var(--akp-navy)" }}>
+          <div className="flex flex-col items-center gap-2 py-10 px-6">
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-              style={{ background: "rgba(201,168,76,0.15)" }}
+              style={{ background: "rgba(201,168,76,0.15)", color: "var(--akp-gold)" }}
             >
               ✓
             </div>
-            <p className="font-semibold text-sm">Member added.</p>
+            <p className="font-semibold text-sm" style={{ color: "var(--t-primary)" }}>Member added.</p>
           </div>
         ) : (
-          <form action={action} className="flex flex-col gap-4">
+          <form action={action} className="flex flex-col gap-4 p-6">
             <Field label="Email *" name="email" type="email" required placeholder="name@unc.edu" />
             <Field label="Full name" name="full_name" placeholder="Jane Smith" />
             <Field label="Position" name="position" placeholder="e.g. Professional Development" />
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-                Role *
-              </label>
+              <label className="input-label">Role *</label>
               <select
                 name="role"
                 defaultValue="member"
-                className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
-                style={{
-                  background: "var(--akp-off-white)",
-                  border: "1px solid var(--akp-gray-200)",
-                  color: "var(--akp-gray-800)",
-                }}
+                className="input"
               >
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
@@ -89,20 +89,18 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
               <p className="text-sm" style={{ color: "#dc2626" }}>{state.error}</p>
             )}
 
-            <div className="flex justify-end gap-3 pt-1">
+            <div className="flex justify-end gap-2 pt-1">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: "var(--akp-gray-100)", color: "var(--akp-gray-600)" }}
+                className="btn btn-ghost btn-sm"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={pending}
-                className="px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
-                style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
+                className="btn btn-primary btn-sm disabled:opacity-50"
               >
                 {pending ? "Adding…" : "Add Member"}
               </button>
@@ -121,20 +119,13 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-        {label}
-      </label>
+      <label className="input-label">{label}</label>
       <input
         name={name}
         type={type}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
-        style={{
-          background: "var(--akp-off-white)",
-          border: "1px solid var(--akp-gray-200)",
-          color: "var(--akp-gray-800)",
-        }}
+        className="input"
       />
     </div>
   );
@@ -160,16 +151,16 @@ function MemberRow({ member, currentEmail }: { member: Member; currentEmail: str
 
   return (
     <tr
-      className="border-t transition-colors"
+      className="border-t transition-opacity"
       style={{
-        borderColor: "var(--akp-gray-200)",
+        borderColor: "var(--b-default)",
         opacity: isPending || removing ? 0.5 : 1,
       }}
     >
       {/* Name + email */}
-      <td className="py-3.5 pr-4">
-        <p className="text-sm font-semibold" style={{ color: "var(--akp-navy)" }}>
-          {member.full_name ?? <span style={{ color: "var(--akp-gray-400)" }}>—</span>}
+      <td className="py-3.5 px-4">
+        <p className="text-sm font-semibold" style={{ color: "var(--t-primary)" }}>
+          {member.full_name ?? <span style={{ color: "var(--t-faint)" }}>—</span>}
           {isSelf && (
             <span
               className="ml-2 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
@@ -179,35 +170,35 @@ function MemberRow({ member, currentEmail }: { member: Member; currentEmail: str
             </span>
           )}
         </p>
-        <p className="text-xs mt-0.5" style={{ color: "var(--akp-gray-400)" }}>{member.email}</p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--t-muted)" }}>{member.email}</p>
       </td>
 
       {/* Position */}
-      <td className="py-3.5 pr-4 hidden sm:table-cell">
-        <span className="text-sm" style={{ color: "var(--akp-gray-600)" }}>
+      <td className="py-3.5 px-4 hidden sm:table-cell">
+        <span className="text-sm" style={{ color: "var(--t-secondary)" }}>
           {member.position ?? "—"}
         </span>
       </td>
 
       {/* Linked */}
-      <td className="py-3.5 pr-4 hidden md:table-cell text-center">
+      <td className="py-3.5 px-4 hidden md:table-cell text-center">
         <span
           className="inline-block w-2 h-2 rounded-full"
-          style={{ background: member.auth_user_id ? "#22c55e" : "var(--akp-gray-300)" }}
+          style={{ background: member.auth_user_id ? "#22c55e" : "var(--b-strong)" }}
           title={member.auth_user_id ? "Signed in at least once" : "Never signed in"}
         />
       </td>
 
       {/* Role toggle */}
-      <td className="py-3.5 pr-4">
+      <td className="py-3.5 px-4">
         <button
           onClick={toggleRole}
           disabled={isPending || isSelf}
           className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all disabled:cursor-not-allowed"
           style={
             member.role === "admin"
-              ? { background: "rgba(201,168,76,0.15)", color: "var(--akp-gold)" }
-              : { background: "var(--akp-gray-100)", color: "var(--akp-gray-600)" }
+              ? { background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }
+              : { background: "var(--s-1)", color: "var(--t-secondary)", border: "1px solid var(--b-default)" }
           }
           title={isSelf ? "You cannot change your own role" : `Click to make ${member.role === "admin" ? "member" : "admin"}`}
         >
@@ -216,7 +207,7 @@ function MemberRow({ member, currentEmail }: { member: Member; currentEmail: str
       </td>
 
       {/* Remove */}
-      <td className="py-3.5 text-right">
+      <td className="py-3.5 px-4 text-right">
         <button
           onClick={remove}
           disabled={isPending || isSelf}
@@ -264,17 +255,11 @@ export default function MembersClient({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, email, position…"
-          className="w-full max-w-xs rounded-xl px-3.5 py-2 text-sm outline-none"
-          style={{
-            background: "var(--akp-white)",
-            border: "1px solid var(--akp-gray-200)",
-            color: "var(--akp-gray-800)",
-          }}
+          className="input max-w-xs"
         />
         <button
           onClick={() => setShowModal(true)}
-          className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
-          style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
+          className="btn btn-primary shrink-0"
         >
           + Add Member
         </button>
@@ -284,33 +269,33 @@ export default function MembersClient({
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: "var(--akp-white)",
-          border: "1px solid var(--akp-gray-200)",
-          boxShadow: "0 1px 4px rgba(10,34,64,0.04)",
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-sm)",
         }}
       >
         <table className="w-full">
           <thead>
-            <tr style={{ background: "var(--akp-off-white)" }}>
-              <th className="text-left text-xs font-bold uppercase tracking-wide px-4 py-3" style={{ color: "var(--akp-gray-400)" }}>
+            <tr style={{ background: "var(--s-1)" }}>
+              <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3" style={{ color: "var(--t-muted)" }}>
                 Member
               </th>
-              <th className="text-left text-xs font-bold uppercase tracking-wide px-4 py-3 hidden sm:table-cell" style={{ color: "var(--akp-gray-400)" }}>
+              <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3 hidden sm:table-cell" style={{ color: "var(--t-muted)" }}>
                 Position
               </th>
-              <th className="text-center text-xs font-bold uppercase tracking-wide px-4 py-3 hidden md:table-cell" style={{ color: "var(--akp-gray-400)" }}>
+              <th className="text-center text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3 hidden md:table-cell" style={{ color: "var(--t-muted)" }}>
                 Linked
               </th>
-              <th className="text-left text-xs font-bold uppercase tracking-wide px-4 py-3" style={{ color: "var(--akp-gray-400)" }}>
+              <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-3" style={{ color: "var(--t-muted)" }}>
                 Role
               </th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="px-4">
+          <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center py-12 text-sm" style={{ color: "var(--akp-gray-400)" }}>
+                <td colSpan={5} className="text-center py-12 text-sm" style={{ color: "var(--t-muted)" }}>
                   {members.length === 0 ? "No members yet." : "No results."}
                 </td>
               </tr>
@@ -318,11 +303,11 @@ export default function MembersClient({
 
             {admins.length > 0 && (
               <>
-                <tr style={{ background: "var(--akp-off-white)" }}>
+                <tr style={{ background: "var(--s-1)", borderTop: "1px solid var(--b-subtle)" }}>
                   <td
                     colSpan={5}
-                    className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest"
-                    style={{ color: "var(--akp-gold)" }}
+                    className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: "var(--t-muted)" }}
                   >
                     Admins — {admins.length}
                   </td>
@@ -335,11 +320,11 @@ export default function MembersClient({
 
             {regularMembers.length > 0 && (
               <>
-                <tr style={{ background: "var(--akp-off-white)" }}>
+                <tr style={{ background: "var(--s-1)", borderTop: "1px solid var(--b-subtle)" }}>
                   <td
                     colSpan={5}
-                    className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest"
-                    style={{ color: "var(--akp-gray-400)" }}
+                    className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: "var(--t-muted)" }}
                   >
                     Members — {regularMembers.length}
                   </td>

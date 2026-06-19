@@ -24,12 +24,13 @@ const TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-  internship: { bg: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" },
-  "full-time": { bg: "rgba(10,34,64,0.08)", color: "var(--akp-navy)" },
-  club: { bg: "rgba(59,130,246,0.1)", color: "#2563eb" },
-  research: { bg: "rgba(16,185,129,0.1)", color: "#059669" },
-  other: { bg: "var(--akp-gray-100)", color: "var(--akp-gray-600)" },
+/* Subtle semantic colours for type badges */
+const TYPE_STYLES: Record<string, { bg: string; color: string; dot: string }> = {
+  internship:  { bg: "rgba(201,168,76,0.10)", color: "#78550a", dot: "#c9a84c" },
+  "full-time": { bg: "rgba(10,34,64,0.07)",   color: "#0a2240", dot: "#0a2240" },
+  club:        { bg: "rgba(59,130,246,0.08)",  color: "#1d4ed8", dot: "#3b82f6" },
+  research:    { bg: "rgba(16,185,129,0.08)",  color: "#065f46", dot: "#10b981" },
+  other:       { bg: "var(--s-1)",             color: "var(--t-secondary)", dot: "var(--t-muted)" },
 };
 
 const ALL_TYPES = ["all", "internship", "full-time", "club", "research", "other"];
@@ -37,6 +38,11 @@ const ALL_TYPES = ["all", "internship", "full-time", "club", "research", "other"
 function formatDeadline(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function isUrgent(iso: string): boolean {
+  const diff = new Date(iso + "T00:00:00").getTime() - Date.now();
+  return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000;
 }
 
 function timeAgo(iso: string) {
@@ -55,9 +61,7 @@ function PostModal({ onClose }: { onClose: () => void }) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (state.success) {
-      setTimeout(onClose, 600);
-    }
+    if (state.success) setTimeout(onClose, 600);
   }, [state.success, onClose]);
 
   useEffect(() => {
@@ -70,186 +74,113 @@ function PostModal({ onClose }: { onClose: () => void }) {
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(10,34,64,0.55)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(20,18,16,0.4)", backdropFilter: "blur(6px)" }}
       onPointerDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       <div
-        className="w-full max-w-lg rounded-2xl p-6 flex flex-col gap-5"
+        className="w-full max-w-lg rounded-2xl overflow-hidden animate-scale-in"
         style={{
-          background: "var(--akp-white)",
-          boxShadow: "0 8px 48px rgba(10,34,64,0.2)",
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-xl)",
+          transformOrigin: "center",
         }}
       >
-        <div className="flex items-center justify-between">
+        {/* Modal header */}
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: "1px solid var(--b-subtle)" }}
+        >
           <h2
-            className="text-xl font-extrabold"
-            style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+            className="text-base font-bold"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
           >
             Post an Opportunity
           </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-gray-100"
-            style={{ color: "var(--akp-gray-400)" }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--s-1)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
             ✕
           </button>
         </div>
 
-        {state.success ? (
-          <div
-            className="flex flex-col items-center gap-3 py-8"
-            style={{ color: "var(--akp-navy)" }}
-          >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-              style={{ background: "rgba(201,168,76,0.15)" }}
-            >
-              ✓
-            </div>
-            <p className="font-semibold">Posted successfully!</p>
-          </div>
-        ) : (
-          <form action={action} className="flex flex-col gap-4">
-            {/* Title */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-                Title *
-              </label>
-              <input
-                name="title"
-                required
-                placeholder="e.g. Summer 2026 Analyst"
-                className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-all"
-                style={{
-                  background: "var(--akp-off-white)",
-                  border: "1px solid var(--akp-gray-200)",
-                  color: "var(--akp-gray-800)",
-                }}
-              />
-            </div>
-
-            {/* Organization */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-                Organization *
-              </label>
-              <input
-                name="organization"
-                required
-                placeholder="e.g. Goldman Sachs"
-                className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-all"
-                style={{
-                  background: "var(--akp-off-white)",
-                  border: "1px solid var(--akp-gray-200)",
-                  color: "var(--akp-gray-800)",
-                }}
-              />
-            </div>
-
-            {/* Type */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-                Type *
-              </label>
-              <select
-                name="type"
-                defaultValue="internship"
-                className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
-                style={{
-                  background: "var(--akp-off-white)",
-                  border: "1px solid var(--akp-gray-200)",
-                  color: "var(--akp-gray-800)",
-                }}
+        <div className="p-6">
+          {state.success ? (
+            <div className="flex flex-col items-center gap-3 py-10" style={{ color: "var(--t-primary)" }}>
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-lg"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#059669" }}
               >
-                {Object.entries(TYPE_LABELS).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
-                ))}
-              </select>
+                ✓
+              </div>
+              <p className="font-semibold">Posted successfully!</p>
             </div>
-
-            {/* Description */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-                Description
-              </label>
-              <textarea
-                name="description"
-                rows={3}
-                placeholder="Brief description, requirements, compensation..."
-                className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none resize-none"
-                style={{
-                  background: "var(--akp-off-white)",
-                  border: "1px solid var(--akp-gray-200)",
-                  color: "var(--akp-gray-800)",
-                }}
-              />
-            </div>
-
-            {/* Deadline + Link row */}
-            <div className="grid grid-cols-2 gap-3">
+          ) : (
+            <form action={action} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-                  Deadline
-                </label>
-                <input
-                  name="deadline"
-                  type="date"
-                  className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
-                  style={{
-                    background: "var(--akp-off-white)",
-                    border: "1px solid var(--akp-gray-200)",
-                    color: "var(--akp-gray-800)",
-                  }}
+                <label className="input-label">Title *</label>
+                <input name="title" required placeholder="e.g. Summer 2026 Analyst" className="input" />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="input-label">Organization *</label>
+                <input name="organization" required placeholder="e.g. Goldman Sachs" className="input" />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="input-label">Type *</label>
+                <select name="type" defaultValue="internship" className="input">
+                  {Object.entries(TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="input-label">Description</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  placeholder="Brief description, requirements, compensation…"
+                  className="input resize-none"
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--akp-gray-600)" }}>
-                  Link
-                </label>
-                <input
-                  name="link"
-                  type="url"
-                  placeholder="https://..."
-                  className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
-                  style={{
-                    background: "var(--akp-off-white)",
-                    border: "1px solid var(--akp-gray-200)",
-                    color: "var(--akp-gray-800)",
-                  }}
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="input-label">Deadline</label>
+                  <input name="deadline" type="date" className="input" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="input-label">Link</label>
+                  <input name="link" type="url" placeholder="https://…" className="input" />
+                </div>
               </div>
-            </div>
 
-            {state.error && (
-              <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
-                {state.error}
-              </p>
-            )}
+              {state.error && (
+                <p className="text-sm" style={{ color: "#dc2626" }}>{state.error}</p>
+              )}
 
-            <div className="flex justify-end gap-3 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-                style={{
-                  background: "var(--akp-gray-100)",
-                  color: "var(--akp-gray-600)",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={pending}
-                className="px-5 py-2 rounded-xl text-sm font-bold transition-opacity disabled:opacity-50"
-                style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
-              >
-                {pending ? "Posting…" : "Post"}
-              </button>
-            </div>
-          </form>
-        )}
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={onClose} className="btn btn-ghost">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="btn btn-primary"
+                  style={{ opacity: pending ? 0.6 : 1 }}
+                >
+                  {pending ? "Posting…" : "Post"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -265,74 +196,77 @@ function OpportunityCard({
   currentUserId?: string;
   isAdmin: boolean;
 }) {
-  const typeStyle = TYPE_COLORS[opp.type] ?? TYPE_COLORS.other;
+  const typeStyle = TYPE_STYLES[opp.type] ?? TYPE_STYLES.other;
   const isOwner = currentUserId === opp.posted_by;
+  const urgent = opp.deadline ? isUrgent(opp.deadline) : false;
 
   return (
-    <div
-      className="rounded-2xl p-5 flex flex-col gap-3 transition-all duration-200 hover:-translate-y-0.5"
-      style={{
-        background: "var(--akp-white)",
-        border: "1px solid var(--akp-gray-200)",
-        boxShadow: "0 1px 4px rgba(10,34,64,0.04), 0 4px 16px rgba(10,34,64,0.06)",
-      }}
-    >
+    <div className="card card-interactive p-5 flex flex-col gap-3">
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold mb-0.5 truncate" style={{ color: "var(--akp-gray-400)" }}>
+          <p className="text-[12px] font-medium mb-0.5 truncate" style={{ color: "var(--t-muted)" }}>
             {opp.organization}
           </p>
           <h3
-            className="text-base font-extrabold leading-tight"
-            style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+            className="text-[15px] font-bold leading-snug"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
           >
             {opp.title}
           </h3>
         </div>
+        {/* Type badge */}
         <span
-          className="shrink-0 text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full"
+          className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
           style={{ background: typeStyle.bg, color: typeStyle.color }}
         >
+          <span
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ background: typeStyle.dot }}
+          />
           {TYPE_LABELS[opp.type] ?? opp.type}
         </span>
       </div>
 
       {/* Description */}
       {opp.description && (
-        <p
-          className="text-sm leading-relaxed line-clamp-3"
-          style={{ color: "var(--akp-gray-600)" }}
-        >
+        <p className="text-[13px] leading-relaxed line-clamp-3" style={{ color: "var(--t-secondary)" }}>
           {opp.description}
         </p>
       )}
 
-      {/* Meta row */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: "var(--akp-gray-400)" }}>
+      {/* Meta */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--t-muted)" }}>
         {opp.deadline && (
-          <span className="flex items-center gap-1">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
+          <span
+            className="inline-flex items-center gap-1"
+            style={{ color: urgent ? "#dc2626" : "var(--t-muted)", fontWeight: urgent ? 600 : 400 }}
+          >
+            {urgent && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+              </svg>
+            )}
             Due {formatDeadline(opp.deadline)}
           </span>
         )}
-        <span>Posted by {opp.posted_by_name ?? "Member"}</span>
+        <span>by {opp.posted_by_name ?? "Member"}</span>
         <span>{timeAgo(opp.created_at)}</span>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center gap-2 pt-1">
+      {/* Footer actions */}
+      <div className="flex items-center gap-2 pt-1" style={{ borderTop: "1px solid var(--b-subtle)" }}>
         {opp.link && (
           <a
             href={opp.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 text-center py-2 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
-            style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
+            className="btn btn-primary btn-sm flex-1 text-center"
           >
-            View →
+            Apply
+            <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6m0 0v6m0-6L10 14" />
+            </svg>
           </a>
         )}
         {(isOwner || isAdmin) && (
@@ -342,8 +276,8 @@ function OpportunityCard({
           }}>
             <button
               type="submit"
-              className="px-3 py-2 rounded-xl text-xs font-semibold transition-colors hover:bg-red-50"
-              style={{ color: "#dc2626", border: "1px solid rgba(220,38,38,0.2)" }}
+              className="btn btn-ghost btn-sm"
+              style={{ color: "#dc2626", borderColor: "rgba(220,38,38,0.2)" }}
             >
               Remove
             </button>
@@ -381,76 +315,74 @@ export default function OpportunitiesClient({
 
   return (
     <>
-      {/* Controls bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        {/* Type pills */}
-        <div className="flex flex-wrap gap-2">
-          {ALL_TYPES.map((t) => {
-            const active = activeType === t;
-            return (
-              <button
-                key={t}
-                onClick={() => setActiveType(t)}
-                className="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all"
-                style={{
-                  background: active ? "var(--akp-navy)" : "var(--akp-gray-100)",
-                  color: active ? "var(--akp-gold)" : "var(--akp-gray-600)",
-                }}
-              >
-                {t === "all" ? "All" : TYPE_LABELS[t]}
-              </button>
-            );
-          })}
+      {/* ── Controls ── */}
+      <div className="flex flex-col gap-4 mb-8">
+        {/* Top row: search + post */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <svg
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+              style={{ color: "var(--t-muted)" }}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search opportunities…"
+              className="input pl-9"
+            />
+          </div>
+          <button onClick={() => setShowModal(true)} className="btn btn-primary shrink-0">
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Post
+          </button>
         </div>
 
-        {/* Search + Post */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search…"
-            className="flex-1 sm:w-52 rounded-xl px-3.5 py-2 text-sm outline-none"
-            style={{
-              background: "var(--akp-white)",
-              border: "1px solid var(--akp-gray-200)",
-              color: "var(--akp-gray-800)",
-            }}
-          />
-          <button
-            onClick={() => setShowModal(true)}
-            className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
-            style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
-          >
-            + Post
-          </button>
+        {/* Type filter row */}
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_TYPES.map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveType(t)}
+              className={`pill ${activeType === t ? "pill-active" : ""}`}
+            >
+              {t === "all" ? "All types" : TYPE_LABELS[t]}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Grid */}
+      {/* ── Grid ── */}
       {filtered.length === 0 ? (
         <div
           className="text-center py-20 rounded-2xl"
-          style={{ background: "var(--akp-white)", border: "1px solid var(--akp-gray-200)" }}
+          style={{ background: "var(--s-0)", border: "1px dashed var(--b-default)" }}
         >
-          <p className="text-4xl mb-4">📋</p>
-          <p className="font-bold text-lg mb-1" style={{ color: "var(--akp-navy)" }}>
+          <p className="text-base font-semibold mb-1" style={{ color: "var(--t-primary)" }}>
             {initialOpportunities.length === 0 ? "No opportunities yet" : "No matches"}
           </p>
-          <p className="text-sm" style={{ color: "var(--akp-gray-400)" }}>
+          <p className="text-sm" style={{ color: "var(--t-muted)" }}>
             {initialOpportunities.length === 0
               ? "Be the first to post one."
               : "Try a different filter or search term."}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((opp) => (
             <OpportunityCard key={opp.id} opp={opp} currentUserId={currentUserId} isAdmin={isAdmin} />
           ))}
         </div>
       )}
 
-      {/* Modal */}
       {showModal && <PostModal onClose={() => setShowModal(false)} />}
     </>
   );

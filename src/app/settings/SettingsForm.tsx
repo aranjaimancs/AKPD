@@ -22,30 +22,28 @@ function Field({
   defaultValue,
   placeholder,
   type = "text",
+  hint,
 }: {
   label: string;
   name: string;
   defaultValue?: string | number | null;
   placeholder?: string;
   type?: string;
+  hint?: string;
 }) {
   return (
-    <div>
-      <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--akp-gray-600)" }}>
-        {label}
-      </label>
+    <div className="flex flex-col gap-1.5">
+      <label className="input-label">{label}</label>
       <input
         type={type}
         name={name}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
-        className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
-        style={{
-          borderColor: "var(--akp-gray-200)",
-          color: "var(--akp-gray-800)",
-          background: "var(--akp-off-white)",
-        }}
+        className="input"
       />
+      {hint && (
+        <p className="text-[11px]" style={{ color: "var(--t-muted)" }}>{hint}</p>
+      )}
     </div>
   );
 }
@@ -71,123 +69,97 @@ export default function SettingsForm({ initialData, email }: Props) {
   })();
 
   return (
-    <form action={action} className="space-y-6">
-      {/* ── Avatar ── */}
-      <div
-        className="rounded-2xl p-6 flex items-center gap-6"
-        style={{ background: "var(--akp-white)", border: "1px solid var(--akp-gray-200)" }}
-      >
-        {/* Clickable avatar */}
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="relative shrink-0 group"
-          title="Change photo"
-        >
-          <div
-            className="w-20 h-20 rounded-full overflow-hidden"
-            style={{ boxShadow: "0 0 0 3px var(--akp-gold)" }}
-          >
-            {preview ? (
-              <Image src={preview} alt="Avatar" fill className="object-cover" sizes="80px" />
-            ) : (
-              <div
-                className="w-full h-full flex items-center justify-center text-xl font-extrabold"
-                style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
-              >
-                {initials}
-              </div>
-            )}
-          </div>
-          {/* Camera overlay */}
-          <div
-            className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            style={{ background: "rgba(10,34,64,0.55)" }}
-          >
-            <svg width="20" height="20" fill="none" stroke="white" strokeWidth="1.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-        </button>
+    <form action={action} className="space-y-8">
 
-        <input
-          ref={fileRef}
-          type="file"
-          name="avatar"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+      {/* ── Avatar section ── */}
+      <section>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-4" style={{ color: "var(--t-muted)" }}>
+          Photo
+        </h2>
+        <div className="flex items-center gap-5">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="relative shrink-0 group"
+            title="Change photo"
+          >
+            <div
+              className="w-16 h-16 rounded-full overflow-hidden"
+              style={{
+                border: "2px solid var(--b-default)",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              {preview ? (
+                <Image src={preview} alt="Avatar" fill className="object-cover" sizes="64px" />
+              ) : (
+                <div
+                  className="w-full h-full flex items-center justify-center text-base font-bold"
+                  style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
+                >
+                  {initials}
+                </div>
+              )}
+            </div>
+            {/* Camera overlay */}
+            <div
+              className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              style={{ background: "rgba(20,18,16,0.45)" }}
+            >
+              <svg width="16" height="16" fill="none" stroke="white" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+          </button>
 
-        <div>
-          <p className="text-sm font-semibold" style={{ color: "var(--akp-navy)" }}>
-            Profile Photo
-          </p>
-          <p className="text-xs mt-1" style={{ color: "var(--akp-gray-400)" }}>
-            Click the photo to upload a new one. JPG or PNG, max 5MB.
-          </p>
-          <p className="text-xs mt-1" style={{ color: "var(--akp-gray-400)" }}>
-            {email}
-          </p>
+          <input ref={fileRef} type="file" name="avatar" accept="image/*" className="hidden" onChange={handleFileChange} />
+
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--t-primary)" }}>
+              Profile photo
+            </p>
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+              Click to upload. JPG or PNG, max 5MB.
+            </p>
+            <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+              {email}
+            </p>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <div style={{ borderBottom: "1px solid var(--b-subtle)" }} />
 
       {/* ── Personal info ── */}
-      <div
-        className="rounded-2xl p-6"
-        style={{ background: "var(--akp-white)", border: "1px solid var(--akp-gray-200)" }}
-      >
-        <h2
-          className="text-sm font-bold mb-5 pb-3"
-          style={{
-            color: "var(--akp-navy)",
-            fontFamily: "var(--font-display)",
-            borderBottom: "1px solid var(--akp-gray-200)",
-          }}
-        >
-          Personal Info
+      <section>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-5" style={{ color: "var(--t-muted)" }}>
+          Personal info
         </h2>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <Field label="Full Name" name="full_name" defaultValue={initialData.full_name} placeholder="Jane Smith" />
-          <Field label="Pledge Class" name="pledge_class" defaultValue={initialData.pledge_class} placeholder="e.g. Alpha, Beta" />
-          <Field label="Graduation Year" name="grad_year" type="number" defaultValue={initialData.grad_year} placeholder="2026" />
+          <Field label="Full name" name="full_name" defaultValue={initialData.full_name} placeholder="Jane Smith" />
+          <Field label="Pledge class" name="pledge_class" defaultValue={initialData.pledge_class} placeholder="e.g. Alpha, Beta" />
+          <Field label="Graduation year" name="grad_year" type="number" defaultValue={initialData.grad_year} placeholder="2026" />
           <Field label="Major" name="major" defaultValue={initialData.major} placeholder="e.g. Finance & Statistics" />
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--akp-gray-600)" }}>
-            Bio
-          </label>
+        <div className="flex flex-col gap-1.5">
+          <label className="input-label">Bio</label>
           <textarea
             name="bio"
             defaultValue={initialData.bio ?? ""}
             rows={3}
-            placeholder="A short bio about yourself — what you're into, where you're headed…"
-            className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 resize-none"
-            style={{
-              borderColor: "var(--akp-gray-200)",
-              color: "var(--akp-gray-800)",
-              background: "var(--akp-off-white)",
-            }}
+            placeholder="A short bio — what you're into, where you're headed…"
+            className="input resize-none"
           />
         </div>
-      </div>
+      </section>
+
+      <div style={{ borderBottom: "1px solid var(--b-subtle)" }} />
 
       {/* ── Links ── */}
-      <div
-        className="rounded-2xl p-6"
-        style={{ background: "var(--akp-white)", border: "1px solid var(--akp-gray-200)" }}
-      >
-        <h2
-          className="text-sm font-bold mb-5 pb-3"
-          style={{
-            color: "var(--akp-navy)",
-            fontFamily: "var(--font-display)",
-            borderBottom: "1px solid var(--akp-gray-200)",
-          }}
-        >
+      <section>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-5" style={{ color: "var(--t-muted)" }}>
           Links
         </h2>
         <Field
@@ -196,12 +168,12 @@ export default function SettingsForm({ initialData, email }: Props) {
           defaultValue={initialData.linkedin_url}
           placeholder="linkedin.com/in/yourname"
         />
-      </div>
+      </section>
 
-      {/* Feedback */}
+      {/* ── Feedback ── */}
       {result?.error && (
         <div
-          className="rounded-xl p-4 text-sm"
+          className="rounded-xl p-4 text-[13px]"
           style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#991b1b" }}
         >
           {result.error}
@@ -209,26 +181,25 @@ export default function SettingsForm({ initialData, email }: Props) {
       )}
       {result?.success && (
         <div
-          className="rounded-xl p-4 text-sm"
+          className="rounded-xl p-4 text-[13px]"
           style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#166534" }}
         >
           Profile saved successfully.
         </div>
       )}
 
-      {/* Submit */}
-      <div className="flex items-center gap-4">
+      {/* ── Submit ── */}
+      <div className="flex items-center justify-between pt-2">
+        <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>
+          Changes are saved to your account immediately.
+        </p>
         <button
           type="submit"
           disabled={pending}
-          className="px-8 py-3 rounded-full text-sm font-bold transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 disabled:opacity-50"
-          style={{
-            background: "var(--akp-navy)",
-            color: "var(--akp-gold)",
-            boxShadow: "0 4px 16px rgba(10,34,64,0.2)",
-          }}
+          className="btn btn-primary"
+          style={{ opacity: pending ? 0.6 : 1 }}
         >
-          {pending ? "Saving…" : "Save Changes"}
+          {pending ? "Saving…" : "Save changes"}
         </button>
       </div>
     </form>

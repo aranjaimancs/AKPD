@@ -20,55 +20,30 @@ export default async function AdminRecruitmentPage() {
     .order("sort_order", { referencedTable: "recruitment_resources" });
 
   const fields = (raw ?? []) as FieldWithResources[];
+  const totalResources = fields.reduce(
+    (n, f) => n + (f.recruitment_resources?.length ?? 0),
+    0
+  );
 
   return (
-    <div
-      className="min-h-screen px-4 py-10 sm:px-8"
-      style={{ background: "var(--akp-off-white)" }}
-    >
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <a
-              href="/admin"
-              className="inline-block text-xs font-semibold mb-2 transition-opacity hover:opacity-70"
-              style={{ color: "var(--akp-gold)" }}
-            >
-              ← Admin
-            </a>
-            <p
-              className="text-xs font-bold uppercase tracking-widest mb-1"
-              style={{ color: "var(--akp-gold)" }}
-            >
-              Admin
-            </p>
-            <h1
-              className="text-3xl font-extrabold"
-              style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
-            >
-              Recruitment Resources
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--akp-gray-600)" }}>
-              {fields.length} field{fields.length !== 1 ? "s" : ""},{" "}
-              {fields.reduce(
-                (n, f) => n + (f.recruitment_resources?.length ?? 0),
-                0
-              )}{" "}
-              resource{fields.reduce((n, f) => n + (f.recruitment_resources?.length ?? 0), 0) !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <a
-            href="/recruitment"
-            className="text-sm font-semibold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
-            style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
-          >
-            ← View Page
-          </a>
+    <main className="flex-1" style={{ background: "var(--s-page)", minHeight: "100vh" }}>
+      {/* ── Breadcrumb bar ── */}
+      <div style={{ background: "var(--s-0)", borderBottom: "1px solid var(--b-default)" }}>
+        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-2">
+          <a href="/admin" className="text-[13px] transition-opacity hover:opacity-70" style={{ color: "var(--t-muted)" }}>Admin</a>
+          <span style={{ color: "var(--b-strong)" }}>/</span>
+          <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>Recruitment Resources</span>
+          <span className="ml-auto text-[12px]" style={{ color: "var(--t-faint)" }}>
+            {fields.length} field{fields.length !== 1 ? "s" : ""} · {totalResources} resource{totalResources !== 1 ? "s" : ""}
+          </span>
+          <a href="/recruitment" className="btn btn-ghost btn-sm">View Page</a>
         </div>
+      </div>
 
+      {/* ── Content ── */}
+      <div className="max-w-5xl mx-auto px-6 py-8">
         <RecruitmentAdminClient fields={fields} />
       </div>
-    </div>
+    </main>
   );
 }

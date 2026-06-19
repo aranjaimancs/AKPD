@@ -16,63 +16,31 @@ export default async function AdminSeniorsPage() {
   const seniors = getSeniors();
 
   return (
-    <div
-      className="min-h-screen px-4 py-10 sm:px-8"
-      style={{ background: "var(--akp-off-white)" }}
-    >
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <a
-              href="/admin"
-              className="inline-block text-xs font-semibold mb-2 transition-opacity hover:opacity-70"
-              style={{ color: "var(--akp-gold)" }}
-            >
-              ← Admin
-            </a>
-            <p
-              className="text-xs font-bold uppercase tracking-widest mb-1"
-              style={{ color: "var(--akp-gold)" }}
-            >
-              Admin
-            </p>
-            <h1
-              className="text-3xl font-extrabold"
-              style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
-            >
-              Senior Profiles
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--akp-gray-600)" }}>
-              {seniors.length} profile{seniors.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="/admin/add-senior"
-              className="text-sm font-semibold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
-              style={{ background: "var(--akp-gold)", color: "var(--akp-navy)" }}
-            >
-              Add Senior →
-            </a>
-          </div>
+    <main className="flex-1" style={{ background: "var(--s-page)", minHeight: "100vh" }}>
+      {/* ── Breadcrumb bar ── */}
+      <div style={{ background: "var(--s-0)", borderBottom: "1px solid var(--b-default)" }}>
+        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-2">
+          <a href="/admin" className="text-[13px] transition-opacity hover:opacity-70" style={{ color: "var(--t-muted)" }}>Admin</a>
+          <span style={{ color: "var(--b-strong)" }}>/</span>
+          <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>Senior Profiles</span>
+          <span className="ml-auto text-[12px]" style={{ color: "var(--t-faint)" }}>{seniors.length} profile{seniors.length !== 1 ? "s" : ""}</span>
+          <a href="/admin/add-senior" className="btn btn-primary btn-sm">Add Senior →</a>
         </div>
+      </div>
 
-        {/* Table */}
+      {/* ── Content ── */}
+      <div className="max-w-5xl mx-auto px-6 py-8">
         <div
           className="rounded-2xl overflow-hidden"
           style={{
-            background: "var(--akp-white)",
-            border: "1.5px solid var(--akp-navy)",
-            boxShadow: "0 2px 8px rgba(10,34,64,0.08)",
+            background: "var(--s-0)",
+            border: "1px solid var(--b-default)",
+            boxShadow: "var(--shadow-sm)",
           }}
         >
           {seniors.length === 0 ? (
-            <div
-              className="px-8 py-16 text-center"
-              style={{ color: "var(--akp-gray-400)" }}
-            >
-              <p className="text-lg font-bold mb-2" style={{ color: "var(--akp-navy)" }}>
+            <div className="px-8 py-16 text-center">
+              <p className="text-base font-bold mb-2" style={{ color: "var(--t-primary)" }}>
                 No seniors yet.
               </p>
               <p className="text-sm">
@@ -87,26 +55,26 @@ export default async function AdminSeniorsPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid var(--akp-gray-200)" }}>
+                <tr style={{ background: "var(--s-1)", borderBottom: "1px solid var(--b-default)" }}>
                   <th
-                    className="px-5 py-3 text-left text-xs font-bold uppercase tracking-widest"
-                    style={{ color: "var(--akp-gray-400)" }}
+                    className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]"
+                    style={{ color: "var(--t-muted)" }}
                   >
                     Senior
                   </th>
                   <th
-                    className="px-5 py-3 text-left text-xs font-bold uppercase tracking-widest hidden sm:table-cell"
-                    style={{ color: "var(--akp-gray-400)" }}
+                    className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em] hidden sm:table-cell"
+                    style={{ color: "var(--t-muted)" }}
                   >
                     Grad
                   </th>
                   <th
-                    className="px-5 py-3 text-left text-xs font-bold uppercase tracking-widest hidden md:table-cell"
-                    style={{ color: "var(--akp-gray-400)" }}
+                    className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em] hidden md:table-cell"
+                    style={{ color: "var(--t-muted)" }}
                   >
                     Company / Title
                   </th>
-                  <th className="px-5 py-3 text-right text-xs font-bold uppercase tracking-widest" style={{ color: "var(--akp-gray-400)" }}>
+                  <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--t-muted)" }}>
                     &nbsp;
                   </th>
                 </tr>
@@ -116,14 +84,14 @@ export default async function AdminSeniorsPage() {
                   <tr
                     key={senior.slug}
                     style={{
-                      borderTop: i > 0 ? "1px solid var(--akp-gray-200)" : undefined,
+                      borderTop: i > 0 ? "1px solid var(--b-subtle)" : undefined,
                     }}
                   >
                     {/* Headshot + name */}
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-sm"
+                          className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs"
                           style={{ background: "var(--akp-navy)", color: "var(--akp-gold)" }}
                         >
                           {senior.headshot ? (
@@ -143,10 +111,10 @@ export default async function AdminSeniorsPage() {
                           )}
                         </div>
                         <div>
-                          <p className="font-bold" style={{ color: "var(--akp-navy)" }}>
+                          <p className="font-semibold" style={{ color: "var(--t-primary)" }}>
                             {senior.name}
                           </p>
-                          <p className="text-xs" style={{ color: "var(--akp-gray-400)" }}>
+                          <p className="text-xs" style={{ color: "var(--t-muted)" }}>
                             {senior.pledgeClass}
                           </p>
                         </div>
@@ -154,26 +122,25 @@ export default async function AdminSeniorsPage() {
                     </td>
 
                     {/* Grad year */}
-                    <td className="px-5 py-3 hidden sm:table-cell" style={{ color: "var(--akp-gray-600)" }}>
+                    <td className="px-5 py-3.5 hidden sm:table-cell" style={{ color: "var(--t-secondary)" }}>
                       {senior.gradYear}
                     </td>
 
                     {/* Company / Title */}
-                    <td className="px-5 py-3 hidden md:table-cell">
-                      <p className="font-semibold" style={{ color: "var(--akp-navy)" }}>
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      <p className="font-semibold" style={{ color: "var(--t-primary)" }}>
                         {senior.destinationCompany}
                       </p>
-                      <p className="text-xs" style={{ color: "var(--akp-gray-400)" }}>
+                      <p className="text-xs" style={{ color: "var(--t-muted)" }}>
                         {senior.destinationTitle}
                       </p>
                     </td>
 
                     {/* Edit button */}
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-3.5 text-right">
                       <a
                         href={`/admin/edit-senior/${senior.slug}`}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-                        style={{ background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }}
+                        className="btn btn-ghost btn-sm"
                       >
                         Edit
                       </a>
@@ -185,6 +152,6 @@ export default async function AdminSeniorsPage() {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

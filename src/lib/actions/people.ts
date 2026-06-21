@@ -67,6 +67,10 @@ export async function upsertPerson(
   }
 
   const gradYearRaw = (formData.get("grad_year") as string).trim();
+  const interestsRaw = (formData.get("interests") as string).trim();
+  const interests = interestsRaw
+    ? interestsRaw.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
   const row = {
     full_name: (formData.get("full_name") as string).trim(),
     member_type: formData.get("member_type") as string,
@@ -82,6 +86,7 @@ export async function upsertPerson(
     linkedin_url: (formData.get("linkedin_url") as string).trim() || null,
     bio: (formData.get("bio") as string).trim() || null,
     major: (formData.get("major") as string).trim() || null,
+    interests,
   };
 
   const supabase = createAdminClient();

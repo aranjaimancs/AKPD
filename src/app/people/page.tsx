@@ -13,7 +13,7 @@ export default async function PeoplePage() {
     createAdminClient()
       .from("people")
       .select(
-        "id, full_name, headshot_url, title, company, industry, location_label, latitude, longitude, grad_year, member_type, pledge_class"
+        "id, full_name, headshot_url, title, company, industry, location_label, latitude, longitude, grad_year, member_type, pledge_class, interests"
       )
       .order("full_name"),
   ]);

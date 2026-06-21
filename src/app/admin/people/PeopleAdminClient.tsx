@@ -26,6 +26,7 @@ export type PersonRow = {
   linkedin_url: string | null;
   bio: string | null;
   major: string | null;
+  interests: string[] | null;
 };
 
 // ── Field components ──────────────────────────────────────────────────────────
@@ -395,6 +396,21 @@ function PersonModal({
                   placeholder="Short bio…"
                   defaultValue={person?.bio}
                 />
+              </div>
+
+              <div className="sm:col-span-2">
+                <div className="flex flex-col gap-1">
+                  <label className="input-label">Interests</label>
+                  <input
+                    name="interests"
+                    defaultValue={(person?.interests ?? []).join(", ")}
+                    placeholder="e.g. Finance, Consulting, Data Science"
+                    className="input"
+                  />
+                  <p className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+                    Comma-separated. Used for filtering on the map.
+                  </p>
+                </div>
               </div>
             </div>
 

@@ -12,6 +12,8 @@ type Profile = {
   grad_year: number | null;
   major: string | null;
   linkedin_url: string | null;
+  location_label: string | null;
+  interests: string[] | null;
 };
 
 export default async function SettingsPage() {
@@ -30,12 +32,14 @@ export default async function SettingsPage() {
     grad_year: null,
     major: null,
     linkedin_url: null,
+    location_label: null,
+    interests: null,
   };
 
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, bio, avatar_url, pledge_class, grad_year, major, linkedin_url")
+      .select("full_name, bio, avatar_url, pledge_class, grad_year, major, linkedin_url, location_label, interests")
       .eq("id", user.id)
       .maybeSingle();
     if (data) profile = data;

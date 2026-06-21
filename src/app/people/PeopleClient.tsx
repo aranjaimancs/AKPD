@@ -38,6 +38,7 @@ export type Person = {
   grad_year: number | null;
   member_type: string | null;
   pledge_class: string | null;
+  interests: string[] | null;
 };
 
 function getInitials(name: string) {
@@ -162,9 +163,15 @@ export default function PeopleClient({
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "alumni" | "current">("all");
   const [filterIndustry, setFilterIndustry] = useState("all");
+  const [filterInterest, setFilterInterest] = useState("all");
 
   const industries = useMemo(() => {
     const set = new Set(people.map((p) => p.industry).filter(Boolean) as string[]);
+    return Array.from(set).sort();
+  }, [people]);
+
+  const allInterests = useMemo(() => {
+    const set = new Set(people.flatMap((p) => p.interests ?? []).filter(Boolean));
     return Array.from(set).sort();
   }, [people]);
 
@@ -181,9 +188,10 @@ export default function PeopleClient({
       }
       if (filterType !== "all" && p.member_type !== filterType) return false;
       if (filterIndustry !== "all" && p.industry !== filterIndustry) return false;
+      if (filterInterest !== "all" && !(p.interests ?? []).includes(filterInterest)) return false;
       return true;
     });
-  }, [people, search, filterType, filterIndustry]);
+  }, [people, search, filterType, filterIndustry, filterInterest]);
 
   const pins: PersonPin[] = useMemo(
     () =>
@@ -314,12 +322,27 @@ export default function PeopleClient({
             <select
               value={filterIndustry}
               onChange={(e) => setFilterIndustry(e.target.value)}
-              className="input"
+              className="input mb-2.5"
               style={{ fontSize: 12 }}
             >
               <option value="all">All industries</option>
               {industries.map((ind) => (
                 <option key={ind} value={ind}>{ind}</option>
+              ))}
+            </select>
+          )}
+
+          {/* Interests filter */}
+          {allInterests.length > 0 && (
+            <select
+              value={filterInterest}
+              onChange={(e) => setFilterInterest(e.target.value)}
+              className="input"
+              style={{ fontSize: 12 }}
+            >
+              <option value="all">All interests</option>
+              {allInterests.map((interest) => (
+                <option key={interest} value={interest}>{interest}</option>
               ))}
             </select>
           )}

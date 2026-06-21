@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import Image from "next/image";
 import { updateProfile } from "@/lib/actions/profile";
+import { useTheme } from "@/components/ThemeProvider";
 
 type Profile = {
   full_name: string | null;
@@ -12,6 +13,8 @@ type Profile = {
   grad_year: number | null;
   major: string | null;
   linkedin_url: string | null;
+  location_label: string | null;
+  interests: string[] | null;
 };
 
 type Props = { initialData: Profile; email: string };
@@ -152,6 +155,44 @@ export default function SettingsForm({ initialData, email }: Props) {
             placeholder="A short bio — what you're into, where you're headed…"
             className="input resize-none"
           />
+        </div>
+      </section>
+
+      <div style={{ borderBottom: "1px solid var(--b-subtle)" }} />
+
+      {/* ── Location ── */}
+      <section>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-5" style={{ color: "var(--t-muted)" }}>
+          Location
+        </h2>
+        <Field
+          label="City / Location"
+          name="location_label"
+          defaultValue={initialData.location_label}
+          placeholder="e.g. New York, NY"
+          hint="This will be geocoded and pinned on the alumni map."
+        />
+      </section>
+
+      <div style={{ borderBottom: "1px solid var(--b-subtle)" }} />
+
+      {/* ── Interests ── */}
+      <section>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-5" style={{ color: "var(--t-muted)" }}>
+          Interests
+        </h2>
+        <div className="flex flex-col gap-1.5">
+          <label className="input-label">Interests</label>
+          <input
+            type="text"
+            name="interests"
+            defaultValue={(initialData.interests ?? []).join(", ")}
+            placeholder="e.g. Finance, Consulting, Data Science, Real Estate"
+            className="input"
+          />
+          <p className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+            Comma-separated. Used for filtering on the alumni map.
+          </p>
         </div>
       </section>
 

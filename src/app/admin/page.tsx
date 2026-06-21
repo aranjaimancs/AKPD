@@ -104,7 +104,7 @@ export default async function AdminHubPage() {
       key: "recruitment",
       icon: ICONS.recruitment,
       title: "Recruitment Resources",
-      description: "Organise career track guides, prep documents, and field resources.",
+      description: "Organize career track guides, prep documents, and field resources.",
       stat: { value: counts.resourcesTotal, label: "resources" },
       subStat: `${counts.fieldsTotal} field${counts.fieldsTotal !== 1 ? "s" : ""}`,
       href: "/admin/recruitment",

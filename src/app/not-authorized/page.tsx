@@ -53,7 +53,7 @@ export default function NotAuthorizedPage() {
             letterSpacing: "-0.01em",
           }}
         >
-          Not authorised
+          Not authorized
         </h1>
         <p
           className="text-[14px] leading-relaxed mb-8"

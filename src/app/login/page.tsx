@@ -115,7 +115,7 @@ export default function LoginPage() {
           <SignInButton />
 
           <p className="mt-5 text-xs text-center" style={{ color: "var(--t-muted)" }}>
-            Access is limited to authorised AKPsi members.
+            Access is limited to authorized AKPsi members.
           </p>
         </div>
 

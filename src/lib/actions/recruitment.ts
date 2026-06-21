@@ -43,7 +43,7 @@ export type FieldWithResources = RecruitmentField & {
 //  1. getCurrentMember() re-validates the JWT against the DB — not a local decode.
 //  2. Only after that check do we call the admin client (bypasses RLS).
 //  3. The URL itself expires after SIGNED_URL_TTL_SECONDS.
-//  4. The storage SELECT policy is a secondary defence.
+//  4. The storage SELECT policy is a secondary defense.
 
 export async function getSignedDownloadUrl(
   filePath: string

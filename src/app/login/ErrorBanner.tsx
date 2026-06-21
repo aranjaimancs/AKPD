@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 
 const MESSAGES: Record<string, string> = {
-  unauthorized: "Your account isn't authorised. Contact a chapter admin.",
+  unauthorized: "Your account isn't authorized. Contact a chapter admin.",
   oauth_failed: "Google sign-in failed — please try again.",
   auth_failed:  "Authentication failed — please try again.",
   no_code:      "Invalid sign-in link. Please start over.",

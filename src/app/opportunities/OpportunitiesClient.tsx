@@ -24,7 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-/* Subtle semantic colours for type badges */
+/* Subtle semantic colors for type badges */
 const TYPE_STYLES: Record<string, { bg: string; color: string; dot: string }> = {
   internship:  { bg: "rgba(201,168,76,0.10)", color: "#78550a", dot: "#c9a84c" },
   "full-time": { bg: "rgba(10,34,64,0.07)",   color: "#0a2240", dot: "#0a2240" },

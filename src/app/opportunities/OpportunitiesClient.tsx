@@ -26,10 +26,10 @@ const TYPE_LABELS: Record<string, string> = {
 
 /* Subtle semantic colors for type badges */
 const TYPE_STYLES: Record<string, { bg: string; color: string; dot: string }> = {
-  internship:  { bg: "rgba(201,168,76,0.10)", color: "#78550a", dot: "#c9a84c" },
-  "full-time": { bg: "rgba(10,34,64,0.07)",   color: "#0a2240", dot: "#0a2240" },
-  club:        { bg: "rgba(59,130,246,0.08)",  color: "#1d4ed8", dot: "#3b82f6" },
-  research:    { bg: "rgba(16,185,129,0.08)",  color: "#065f46", dot: "#10b981" },
+  internship:  { bg: "rgba(201,168,76,0.10)", color: "var(--akp-gold)", dot: "#c9a84c" },
+  "full-time": { bg: "rgba(10,34,64,0.07)",   color: "var(--t-secondary)", dot: "var(--t-muted)" },
+  club:        { bg: "rgba(59,130,246,0.08)",  color: "#60a5fa", dot: "#3b82f6" },
+  research:    { bg: "rgba(16,185,129,0.08)",  color: "#34d399", dot: "#10b981" },
   other:       { bg: "var(--s-1)",             color: "var(--t-secondary)", dot: "var(--t-muted)" },
 };
 

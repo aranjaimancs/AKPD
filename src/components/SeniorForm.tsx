@@ -181,7 +181,7 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
       className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm transition-colors"
       style={{ color: "var(--t-muted)" }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.background = "#fef2f2";
+        (e.currentTarget as HTMLElement).style.background = "rgba(220,38,38,0.1)";
         (e.currentTarget as HTMLElement).style.color = "#dc2626";
       }}
       onMouseLeave={(e) => {
@@ -578,7 +578,7 @@ export default function SeniorForm({ mode, initialData, existingHeadshotUrl }: P
 
           {/* Error */}
           {error && (
-            <div className="rounded-xl p-4 text-sm mb-6" style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#991b1b" }}>
+            <div className="rounded-xl p-4 text-sm mb-6 feedback-error">
               {error}
             </div>
           )}

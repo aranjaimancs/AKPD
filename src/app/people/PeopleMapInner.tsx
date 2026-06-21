@@ -86,7 +86,7 @@ function buildPopupHtml(pin: PersonPin): string {
       : "";
   return `<div style="min-width:180px;font-family:system-ui,sans-serif;">
     ${img}
-    <p style="margin:0;font-weight:700;font-size:14px;color:#0a2240;">${pin.full_name}</p>
+    <p style="margin:0;font-weight:700;font-size:14px;color:#141210;">${pin.full_name}</p>
     ${job}${loc}${badge}
   </div>`;
 }

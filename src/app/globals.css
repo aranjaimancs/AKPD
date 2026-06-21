@@ -66,6 +66,84 @@
   --akp-gray-800:    var(--t-primary);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE — overrides only the semantic tokens; brand colors stay constant
+   ───────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  --s-page:     #111110;   /* page background — warm dark charcoal          */
+  --s-0:        #1c1b1a;   /* card / panel surface                          */
+  --s-1:        #252422;   /* inset / secondary surface (inputs, sidebars)  */
+  --s-2:        #2d2c2a;   /* subtle divider background                     */
+
+  /* ── Borders ──────────────────────────────────────────────────────────── */
+  --b-subtle:   #2d2c2a;
+  --b-default:  #3a3836;
+  --b-strong:   #4e4c49;
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --t-primary:  #f0ede8;   /* warm off-white                                */
+  --t-secondary:#a8a39c;
+  --t-muted:    #6e6860;
+  --t-faint:    #4a4540;
+
+  /* ── Interactive ──────────────────────────────────────────────────────── */
+  --i-navy:       #1a4a80;
+  --i-navy-hover: #1e5490;
+  --i-gold-bg:    rgba(201,168,76,0.12);
+  --i-gold-border:rgba(201,168,76,0.35);
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.30);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.40), 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-md:  0 2px 6px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.30);
+  --shadow-lg:  0 4px 12px rgba(0,0,0,0.40), 0 20px 48px rgba(0,0,0,0.35);
+  --shadow-xl:  0 8px 24px rgba(0,0,0,0.45), 0 40px 80px rgba(0,0,0,0.40);
+
+  /* ── Legacy aliases ───────────────────────────────────────────────────── */
+  --akp-white:       #1c1b1a;
+  --akp-off-white:   var(--s-page);
+  --akp-gray-100:    var(--s-1);
+  --akp-gray-200:    var(--b-default);
+  --akp-gray-400:    var(--t-muted);
+  --akp-gray-600:    var(--t-secondary);
+  --akp-gray-800:    var(--t-primary);
+}
+
+/* Dark mode: badge-navy needs a lighter tint so it's visible on dark bg */
+[data-theme="dark"] .badge-navy {
+  background: rgba(26,74,128,0.20);
+  color: #7aaee8;
+}
+
+/* Dark mode: badge-gold text stays legible */
+[data-theme="dark"] .badge-gold {
+  background: rgba(201,168,76,0.14);
+  color: var(--akp-gold-light);
+  border-color: rgba(201,168,76,0.30);
+}
+
+/* Dark mode: input focus ring */
+[data-theme="dark"] .input:focus {
+  border-color: var(--akp-navy-light);
+  box-shadow: 0 0 0 3px rgba(26,63,111,0.25);
+}
+
+/* Dark mode: member type badges (alumni/current) */
+[data-theme="dark"] .badge-member-current {
+  background: rgba(26,74,128,0.25);
+  color: #7aaee8;
+}
+
+/* Dark mode: scrollbar thumb */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--b-strong);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--t-faint);
+}
+
 /* ── Tailwind theme extension ───────────────────────────────────────────── */
 @theme inline {
   --color-navy:        var(--akp-navy);
@@ -473,6 +551,32 @@ body {
   border-color: var(--b-strong);
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FEEDBACK TOASTS (theme-aware)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.feedback-error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+.feedback-success {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+[data-theme="dark"] .feedback-error {
+  background: rgba(153,27,27,0.15);
+  border-color: rgba(252,165,165,0.25);
+  color: #fca5a5;
+}
+[data-theme="dark"] .feedback-success {
+  background: rgba(22,101,52,0.15);
+  border-color: rgba(134,239,172,0.25);
+  color: #86efac;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

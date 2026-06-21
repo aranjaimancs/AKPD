@@ -227,7 +227,7 @@ function SeniorCard({ senior, index }: { senior: SeniorIndex; index: number }) {
               </p>
               <p
                 className="text-[13px] font-semibold leading-snug"
-                style={{ color: "var(--akp-navy)" }}
+                style={{ color: "var(--t-primary)" }}
               >
                 {senior.destinationCompany}
               </p>

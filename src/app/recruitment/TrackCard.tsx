@@ -66,7 +66,7 @@ export default function TrackCard({
         <div className="flex items-start justify-between gap-2 mb-1.5">
           <h2
             className="text-base font-extrabold leading-tight"
-            style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
           >
             {track.name}
           </h2>

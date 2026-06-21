@@ -781,8 +781,8 @@ function ResourceRow({
         className="shrink-0 badge"
         style={
           resource.resource_type === "file"
-            ? { background: "rgba(10,34,64,0.07)", color: "var(--akp-navy)" }
-            : { background: "rgba(201,168,76,0.12)", color: "#78550a" }
+            ? { background: "rgba(10,34,64,0.07)", color: "var(--t-secondary)" }
+            : { background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }
         }
       >
         {resource.resource_type === "file"

@@ -182,7 +182,7 @@ export default async function ProfilePage({
                 </p>
                 <p
                   className="text-base font-semibold leading-tight"
-                  style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+                  style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
                 >
                   {profile.destinationCompany}
                 </p>

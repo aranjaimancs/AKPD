@@ -128,8 +128,8 @@ function PersonCard({
               className="badge"
               style={
                 person.member_type === "alumni"
-                  ? { background: "rgba(201,168,76,0.1)", color: "#78550a", fontSize: 10 }
-                  : { background: "rgba(10,34,64,0.07)", color: "var(--akp-navy)", fontSize: 10 }
+                  ? { background: "rgba(201,168,76,0.1)", color: "var(--akp-gold)", fontSize: 10 }
+                  : { background: "rgba(10,34,64,0.07)", color: "var(--t-secondary)", fontSize: 10 }
               }
             >
               {person.member_type === "alumni" ? "Alumni" : "Current"}

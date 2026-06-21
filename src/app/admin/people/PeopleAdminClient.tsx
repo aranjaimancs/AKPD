@@ -548,8 +548,8 @@ function PersonTableRow({
               className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded w-fit"
               style={
                 person.member_type === "alumni"
-                  ? { background: "rgba(201,168,76,0.12)", color: "#78550a" }
-                  : { background: "rgba(10,34,64,0.07)", color: "var(--akp-navy)" }
+                  ? { background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }
+                  : { background: "rgba(10,34,64,0.07)", color: "var(--t-secondary)" }
               }
             >
               {person.member_type === "alumni" ? "Alumni" : "Current"}

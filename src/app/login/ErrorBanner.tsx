@@ -19,14 +19,7 @@ export default function ErrorBanner() {
   const msg = MESSAGES[code] ?? "Something went wrong. Please try again.";
 
   return (
-    <div
-      className="rounded-xl p-3.5 mb-5 text-sm"
-      style={{
-        background: "#fef2f2",
-        border: "1px solid #fca5a5",
-        color: "#991b1b",
-      }}
-    >
+    <div className="rounded-xl p-3.5 mb-5 text-sm feedback-error">
       {msg}
     </div>
   );

@@ -8,6 +8,8 @@ export type Opportunity = {
   title: string;
   organization: string;
   type: string;
+  audience: string;
+  status: string;
   description: string | null;
   deadline: string | null;
   link: string | null;
@@ -24,13 +26,18 @@ const TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-/* Subtle semantic colors for type badges */
 const TYPE_STYLES: Record<string, { bg: string; color: string; dot: string }> = {
-  internship:  { bg: "rgba(201,168,76,0.10)", color: "var(--akp-gold)", dot: "#c9a84c" },
-  "full-time": { bg: "rgba(10,34,64,0.07)",   color: "var(--t-secondary)", dot: "var(--t-muted)" },
-  club:        { bg: "rgba(59,130,246,0.08)",  color: "#60a5fa", dot: "#3b82f6" },
-  research:    { bg: "rgba(16,185,129,0.08)",  color: "#34d399", dot: "#10b981" },
-  other:       { bg: "var(--s-1)",             color: "var(--t-secondary)", dot: "var(--t-muted)" },
+  internship:  { bg: "rgba(201,168,76,0.10)", color: "var(--akp-gold)",     dot: "#c9a84c" },
+  "full-time": { bg: "rgba(10,34,64,0.07)",   color: "var(--t-secondary)",  dot: "var(--t-muted)" },
+  club:        { bg: "rgba(59,130,246,0.08)",  color: "#60a5fa",            dot: "#3b82f6" },
+  research:    { bg: "rgba(16,185,129,0.08)",  color: "#34d399",            dot: "#10b981" },
+  other:       { bg: "var(--s-1)",             color: "var(--t-secondary)",  dot: "var(--t-muted)" },
+};
+
+const AUDIENCE_LABELS: Record<string, string> = {
+  all:      "Everyone",
+  students: "Students",
+  alumni:   "Alumni",
 };
 
 const ALL_TYPES = ["all", "internship", "full-time", "club", "research", "other"];
@@ -56,7 +63,7 @@ function timeAgo(iso: string) {
 }
 
 /* ── Post Modal ── */
-function PostModal({ onClose }: { onClose: () => void }) {
+function PostModal({ onClose, isAdmin }: { onClose: () => void; isAdmin: boolean }) {
   const [state, action, pending] = useActionState(postOpportunity, {});
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -110,14 +117,23 @@ function PostModal({ onClose }: { onClose: () => void }) {
 
         <div className="p-6">
           {state.success ? (
-            <div className="flex flex-col items-center gap-3 py-10" style={{ color: "var(--t-primary)" }}>
+            <div className="flex flex-col items-center gap-3 py-10 text-center" style={{ color: "var(--t-primary)" }}>
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center text-lg"
                 style={{ background: "rgba(16,185,129,0.12)", color: "#059669" }}
               >
                 ✓
               </div>
-              <p className="font-semibold">Posted successfully!</p>
+              {isAdmin || !state.pending ? (
+                <p className="font-semibold">Posted successfully!</p>
+              ) : (
+                <>
+                  <p className="font-semibold">Submitted for review</p>
+                  <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>
+                    An admin will approve it before it goes live.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <form action={action} className="flex flex-col gap-4">
@@ -131,13 +147,24 @@ function PostModal({ onClose }: { onClose: () => void }) {
                 <input name="organization" required placeholder="e.g. Goldman Sachs" className="input" />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="input-label">Type *</label>
-                <select name="type" defaultValue="internship" className="input">
-                  {Object.entries(TYPE_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="input-label">Type *</label>
+                  <select name="type" defaultValue="internship" className="input">
+                    {Object.entries(TYPE_LABELS).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="input-label">Visible to</label>
+                  <select name="audience" defaultValue="all" className="input">
+                    <option value="all">Everyone</option>
+                    <option value="students">Students only</option>
+                    <option value="alumni">Alumni only</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -186,6 +213,25 @@ function PostModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/* ── Audience badge ── */
+function AudienceBadge({ audience }: { audience: string }) {
+  if (audience === "all") return null; // "Everyone" is the default — no badge needed
+  const isStudents = audience === "students";
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+      style={{
+        background: isStudents
+          ? "rgba(59,130,246,0.08)"
+          : "rgba(168,85,247,0.08)",
+        color: isStudents ? "#60a5fa" : "#c084fc",
+      }}
+    >
+      {isStudents ? "Students" : "Alumni"}
+    </span>
+  );
+}
+
 /* ── Opportunity Card ── */
 function OpportunityCard({
   opp,
@@ -205,9 +251,12 @@ function OpportunityCard({
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-medium mb-0.5 truncate" style={{ color: "var(--t-muted)" }}>
-            {opp.organization}
-          </p>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="text-[12px] font-medium truncate" style={{ color: "var(--t-muted)" }}>
+              {opp.organization}
+            </p>
+            <AudienceBadge audience={opp.audience ?? "all"} />
+          </div>
           <h3
             className="text-[15px] font-bold leading-snug"
             style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
@@ -220,10 +269,7 @@ function OpportunityCard({
           className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
           style={{ background: typeStyle.bg, color: typeStyle.color }}
         >
-          <span
-            className="w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ background: typeStyle.dot }}
-          />
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: typeStyle.dot }} />
           {TYPE_LABELS[opp.type] ?? opp.type}
         </span>
       </div>
@@ -293,14 +339,22 @@ export default function OpportunitiesClient({
   initialOpportunities,
   currentUserId,
   isAdmin = false,
+  isAlumni = false,
 }: {
   initialOpportunities: Opportunity[];
   currentUserId?: string;
   isAdmin?: boolean;
+  isAlumni?: boolean;
 }) {
   const [activeType, setActiveType] = useState("all");
   const [query, setQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
+
+  // Alumni don't see club posts in their filtered view (clubs are student-focused).
+  // Admins see everything. Students and alumni filter by what the server already sent.
+  const visibleTypes = isAlumni
+    ? ALL_TYPES.filter((t) => t !== "club")
+    : ALL_TYPES;
 
   const filtered = initialOpportunities.filter((o) => {
     const matchType = activeType === "all" || o.type === activeType;
@@ -309,7 +363,7 @@ export default function OpportunitiesClient({
       !q ||
       o.title.toLowerCase().includes(q) ||
       o.organization.toLowerCase().includes(q) ||
-      o.description?.toLowerCase().includes(q);
+      (o.description?.toLowerCase().includes(q) ?? false);
     return matchType && matchQuery;
   });
 
@@ -348,7 +402,7 @@ export default function OpportunitiesClient({
 
         {/* Type filter row */}
         <div className="flex flex-wrap gap-1.5">
-          {ALL_TYPES.map((t) => (
+          {visibleTypes.map((t) => (
             <button
               key={t}
               onClick={() => setActiveType(t)}
@@ -383,7 +437,7 @@ export default function OpportunitiesClient({
         </div>
       )}
 
-      {showModal && <PostModal onClose={() => setShowModal(false)} />}
+      {showModal && <PostModal onClose={() => setShowModal(false)} isAdmin={isAdmin} />}
     </>
   );
 }

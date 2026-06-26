@@ -1,4 +1,5 @@
 import { requireMember, getCurrentMember } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { FieldWithResources, RecruitmentResource } from "@/lib/actions/recruitment";
 import DownloadButton from "./DownloadButton";
@@ -175,9 +176,10 @@ function FieldSection({
 }
 
 export default async function RecruitmentPage() {
-  await requireMember();
-  const member = await getCurrentMember();
-  const isAdmin = member?.role === "admin";
+  const member = await requireMember();
+  // Alumni don't need recruiting resources — send them to opportunities instead
+  if (member.role === "alumni") redirect("/opportunities");
+  const isAdmin = member.role === "admin";
 
   const { data: raw } = await createAdminClient()
     .from("recruitment_fields")

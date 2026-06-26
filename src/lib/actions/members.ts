@@ -18,7 +18,7 @@ export async function addMember(
   const role = formData.get("role") as string;
 
   if (!email) return { error: "Email is required." };
-  if (!["admin", "member"].includes(role)) return { error: "Invalid role." };
+  if (!["admin", "member", "alumni"].includes(role)) return { error: "Invalid role." };
 
   const admin = createAdminClient();
   const { error } = await admin
@@ -50,6 +50,27 @@ export async function updateMemberRole(
   if (error) {
     console.error("updateMemberRole error:", error.message);
     return { error: "Failed to update role." };
+  }
+
+  revalidatePath("/admin/members");
+  return {};
+}
+
+export async function updateMember(
+  memberId: string,
+  data: { full_name: string | null; position: string | null; role: "admin" | "member" | "alumni" }
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("members")
+    .update({ full_name: data.full_name, position: data.position, role: data.role })
+    .eq("id", memberId);
+
+  if (error) {
+    console.error("updateMember error:", error.message);
+    return { error: "Failed to update member." };
   }
 
   revalidatePath("/admin/members");

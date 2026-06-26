@@ -77,7 +77,7 @@ export default async function Navbar() {
         />
 
         {/* ── Nav links ── */}
-        <NavLinks isAdmin={member.role === "admin"} />
+        <NavLinks isAdmin={member.role === "admin"} isAlumni={member.role === "alumni"} />
 
         {/* ── Spacer ── */}
         <div className="flex-1" />

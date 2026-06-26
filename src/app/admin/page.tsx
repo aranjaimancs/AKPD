@@ -15,6 +15,7 @@ async function fetchCounts() {
     onMapResult,
     fieldsResult,
     resourcesResult,
+    pendingOpportunitiesResult,
   ] = await Promise.all([
     admin.from("members").select("id", { count: "exact", head: true }),
     admin.from("members").select("id", { count: "exact", head: true }).eq("role", "admin"),
@@ -22,6 +23,7 @@ async function fetchCounts() {
     admin.from("people").select("id", { count: "exact", head: true }).not("latitude", "is", null),
     admin.from("recruitment_fields").select("id", { count: "exact", head: true }),
     admin.from("recruitment_resources").select("id", { count: "exact", head: true }),
+    admin.from("opportunities").select("id", { count: "exact", head: true }).eq("is_active", true).eq("status", "pending"),
   ]);
 
   const indexPath = path.join(process.cwd(), "src", "data", "seniors.json");
@@ -37,6 +39,7 @@ async function fetchCounts() {
     onMapTotal: onMapResult.count ?? 0,
     fieldsTotal: fieldsResult.count ?? 0,
     resourcesTotal: resourcesResult.count ?? 0,
+    pendingOpportunitiesTotal: pendingOpportunitiesResult.count ?? 0,
   };
 }
 
@@ -64,6 +67,13 @@ const ICONS = {
   recruitment: (
     <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  opportunities: (
+    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 12v4m-2-2h4" />
     </svg>
   ),
 };
@@ -108,6 +118,16 @@ export default async function AdminHubPage() {
       stat: { value: counts.resourcesTotal, label: "resources" },
       subStat: `${counts.fieldsTotal} field${counts.fieldsTotal !== 1 ? "s" : ""}`,
       href: "/admin/recruitment",
+    },
+    {
+      key: "opportunities",
+      icon: ICONS.opportunities,
+      title: "Opportunities",
+      description: "Review and approve member-submitted opportunities before they go live.",
+      stat: { value: counts.pendingOpportunitiesTotal, label: "pending" },
+      subStat: null,
+      href: "/admin/opportunities",
+      alert: counts.pendingOpportunitiesTotal > 0,
     },
   ];
 
@@ -184,7 +204,10 @@ export default async function AdminHubPage() {
                 <div className="flex items-baseline gap-2">
                   <span
                     className="text-xl font-bold"
-                    style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
+                    style={{
+                      color: "alert" in card && card.alert ? "#dc2626" : "var(--t-primary)",
+                      fontFamily: "var(--font-display)",
+                    }}
                   >
                     {card.stat.value}
                   </span>

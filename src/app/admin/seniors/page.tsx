@@ -1,19 +1,33 @@
-import fs from "fs";
-import path from "path";
 import { requireAdmin } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { SeniorIndex } from "@/types/profile";
 
 export const dynamic = "force-dynamic";
 
-function getSeniors(): SeniorIndex[] {
-  const indexPath = path.join(process.cwd(), "src", "data", "seniors.json");
-  if (!fs.existsSync(indexPath)) return [];
-  return JSON.parse(fs.readFileSync(indexPath, "utf8")) as SeniorIndex[];
-}
-
 export default async function AdminSeniorsPage() {
   await requireAdmin();
-  const seniors = getSeniors();
+
+  const { data } = await createAdminClient()
+    .from("seniors")
+    .select(
+      "slug, name, headshot_url, pledge_class, grad_year, destination_title, destination_company, tags"
+    )
+    .order("grad_year", { ascending: false })
+    .order("name");
+
+  const seniors: SeniorIndex[] = (data ?? []).map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    headshot: r.headshot_url ?? "",
+    majors: [],
+    minors: [],
+    pledgeClass: r.pledge_class,
+    gradYear: r.grad_year,
+    destinationTitle: r.destination_title,
+    destinationCompany: r.destination_company,
+    tags: r.tags ?? [],
+    summary: "",
+  }));
 
   return (
     <main className="flex-1" style={{ background: "var(--s-page)", minHeight: "100vh" }}>
@@ -44,10 +58,7 @@ export default async function AdminSeniorsPage() {
                 No seniors yet.
               </p>
               <p className="text-sm">
-                <a
-                  href="/admin/add-senior"
-                  style={{ color: "var(--akp-gold)", fontWeight: 600 }}
-                >
+                <a href="/admin/add-senior" style={{ color: "var(--akp-gold)", fontWeight: 600 }}>
                   Add the first one →
                 </a>
               </p>
@@ -56,22 +67,13 @@ export default async function AdminSeniorsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: "var(--s-1)", borderBottom: "1px solid var(--b-default)" }}>
-                  <th
-                    className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]"
-                    style={{ color: "var(--t-muted)" }}
-                  >
+                  <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--t-muted)" }}>
                     Senior
                   </th>
-                  <th
-                    className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em] hidden sm:table-cell"
-                    style={{ color: "var(--t-muted)" }}
-                  >
+                  <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em] hidden sm:table-cell" style={{ color: "var(--t-muted)" }}>
                     Grad
                   </th>
-                  <th
-                    className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em] hidden md:table-cell"
-                    style={{ color: "var(--t-muted)" }}
-                  >
+                  <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em] hidden md:table-cell" style={{ color: "var(--t-muted)" }}>
                     Company / Title
                   </th>
                   <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--t-muted)" }}>
@@ -83,9 +85,7 @@ export default async function AdminSeniorsPage() {
                 {seniors.map((senior, i) => (
                   <tr
                     key={senior.slug}
-                    style={{
-                      borderTop: i > 0 ? "1px solid var(--b-subtle)" : undefined,
-                    }}
+                    style={{ borderTop: i > 0 ? "1px solid var(--b-subtle)" : undefined }}
                   >
                     {/* Headshot + name */}
                     <td className="px-5 py-3.5">
@@ -97,7 +97,7 @@ export default async function AdminSeniorsPage() {
                           {senior.headshot ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={`/seniors/${senior.slug}/${senior.headshot}`}
+                              src={senior.headshot}
                               alt={senior.name}
                               className="w-full h-full object-cover"
                             />
@@ -138,10 +138,7 @@ export default async function AdminSeniorsPage() {
 
                     {/* Edit button */}
                     <td className="px-5 py-3.5 text-right">
-                      <a
-                        href={`/admin/edit-senior/${senior.slug}`}
-                        className="btn btn-ghost btn-sm"
-                      >
+                      <a href={`/admin/edit-senior/${senior.slug}`} className="btn btn-ghost btn-sm">
                         Edit
                       </a>
                     </td>

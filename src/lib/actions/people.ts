@@ -48,7 +48,7 @@ export async function upsertPerson(
   await requireAdmin();
 
   const id = (formData.get("id") as string) || null;
-  const locationLabel = (formData.get("location_label") as string).trim();
+  const locationLabel = (formData.get("location_label") as string).trim().slice(0, 256);
   const latRaw = (formData.get("latitude") as string).trim();
   const lngRaw = (formData.get("longitude") as string).trim();
 

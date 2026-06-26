@@ -1,8 +1,31 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { addMember, updateMemberRole, removeMember } from "@/lib/actions/members";
+import { addMember, updateMember, updateMemberRole, removeMember } from "@/lib/actions/members";
 import type { Member } from "@/lib/auth";
+
+// ── Shared field ──────────────────────────────────────────────────────────────
+
+function Field({
+  label, name, type = "text", required, placeholder, defaultValue,
+}: {
+  label: string; name: string; type?: string; required?: boolean;
+  placeholder?: string; defaultValue?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="input-label">{label}</label>
+      <input
+        name={name}
+        type={type}
+        required={required}
+        placeholder={placeholder}
+        defaultValue={defaultValue ?? ""}
+        className="input"
+      />
+    </div>
+  );
+}
 
 // ── Add-member modal ──────────────────────────────────────────────────────────
 
@@ -35,7 +58,6 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
           boxShadow: "var(--shadow-xl)",
         }}
       >
-        {/* Modal header */}
         <div
           className="flex items-center justify-between px-6 py-5"
           style={{ borderBottom: "1px solid var(--b-subtle)" }}
@@ -75,12 +97,9 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
 
             <div className="flex flex-col gap-1.5">
               <label className="input-label">Role *</label>
-              <select
-                name="role"
-                defaultValue="member"
-                className="input"
-              >
-                <option value="member">Member</option>
+              <select name="role" defaultValue="member" className="input">
+                <option value="member">Member (student)</option>
+                <option value="alumni">Alumni</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
@@ -90,18 +109,10 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
             )}
 
             <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-ghost btn-sm"
-              >
+              <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={pending}
-                className="btn btn-primary btn-sm disabled:opacity-50"
-              >
+              <button type="submit" disabled={pending} className="btn btn-primary btn-sm disabled:opacity-50">
                 {pending ? "Adding…" : "Add Member"}
               </button>
             </div>
@@ -112,33 +123,177 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Field({
-  label, name, type = "text", required, placeholder,
+// ── Edit-member modal ─────────────────────────────────────────────────────────
+
+function EditMemberModal({
+  member,
+  currentEmail,
+  onClose,
 }: {
-  label: string; name: string; type?: string; required?: boolean; placeholder?: string;
+  member: Member;
+  currentEmail: string;
+  onClose: () => void;
 }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const isSelf = member.email === currentEmail;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const full_name = (fd.get("full_name") as string).trim() || null;
+    const position = (fd.get("position") as string).trim() || null;
+    // Disabled selects are excluded from FormData — fall back to current role
+    const role = (fd.get("role") as "admin" | "member" | "alumni" | null) ?? member.role;
+
+    setError(null);
+    startTransition(async () => {
+      const result = await updateMember(member.id, { full_name, position, role });
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setDone(true);
+        setTimeout(onClose, 500);
+      }
+    });
+  }
+
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="input-label">{label}</label>
-      <input
-        name={name}
-        type={type}
-        required={required}
-        placeholder={placeholder}
-        className="input"
-      />
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(20,18,16,0.5)", backdropFilter: "blur(4px)" }}
+      onPointerDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl flex flex-col animate-scale-in"
+        style={{
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-xl)",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-6 py-5"
+          style={{ borderBottom: "1px solid var(--b-subtle)" }}
+        >
+          <div>
+            <h2
+              className="text-[16px] font-bold"
+              style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
+            >
+              Edit Member
+            </h2>
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+              {member.email}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--s-1)"}
+            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = "transparent"}
+          >
+            ✕
+          </button>
+        </div>
+
+        {done ? (
+          <div className="flex flex-col items-center gap-2 py-10 px-6">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+              style={{ background: "rgba(201,168,76,0.15)", color: "var(--akp-gold)" }}
+            >
+              ✓
+            </div>
+            <p className="font-semibold text-sm" style={{ color: "var(--t-primary)" }}>Saved.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
+            <Field
+              label="Full name"
+              name="full_name"
+              placeholder="Jane Smith"
+              defaultValue={member.full_name ?? ""}
+            />
+            <Field
+              label="Position"
+              name="position"
+              placeholder="e.g. President, VP Finance, Rush Chair…"
+              defaultValue={member.position ?? ""}
+            />
+
+            <div className="flex flex-col gap-1.5">
+              <label className="input-label">Role</label>
+              <select
+                name="role"
+                defaultValue={member.role}
+                disabled={isSelf}
+                className="input"
+                style={isSelf ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+              >
+                <option value="member">Member (student)</option>
+                <option value="alumni">Alumni</option>
+                <option value="admin">Admin</option>
+              </select>
+              {isSelf && (
+                <p className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+                  You cannot change your own role.
+                </p>
+              )}
+            </div>
+
+            {error && (
+              <p className="text-sm" style={{ color: "#dc2626" }}>{error}</p>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="btn btn-primary btn-sm disabled:opacity-50"
+              >
+                {isPending ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }
 
 // ── Member row ────────────────────────────────────────────────────────────────
 
-function MemberRow({ member, currentEmail }: { member: Member; currentEmail: string }) {
+function MemberRow({
+  member,
+  currentEmail,
+  onEdit,
+}: {
+  member: Member;
+  currentEmail: string;
+  onEdit: (m: Member) => void;
+}) {
   const [isPending, startTransition] = useTransition();
   const [removing, setRemoving] = useState(false);
   const isSelf = member.email === currentEmail;
 
   function toggleRole() {
+    // Only toggles admin ↔ member. Alumni role changes require the edit modal.
+    if (member.role === "alumni") return;
     const next = member.role === "admin" ? "member" : "admin";
     startTransition(async () => { await updateMemberRole(member.id, next); });
   }
@@ -176,7 +331,7 @@ function MemberRow({ member, currentEmail }: { member: Member; currentEmail: str
       {/* Position */}
       <td className="py-3.5 px-4 hidden sm:table-cell">
         <span className="text-sm" style={{ color: "var(--t-secondary)" }}>
-          {member.position ?? "—"}
+          {member.position ?? <span style={{ color: "var(--t-faint)" }}>—</span>}
         </span>
       </td>
 
@@ -189,34 +344,58 @@ function MemberRow({ member, currentEmail }: { member: Member; currentEmail: str
         />
       </td>
 
-      {/* Role toggle */}
+      {/* Role badge (click to toggle) */}
       <td className="py-3.5 px-4">
         <button
           onClick={toggleRole}
-          disabled={isPending || isSelf}
+          disabled={isPending || isSelf || member.role === "alumni"}
           className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all disabled:cursor-not-allowed"
           style={
             member.role === "admin"
               ? { background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }
+              : member.role === "alumni"
+              ? { background: "rgba(168,85,247,0.10)", color: "#c084fc" }
               : { background: "var(--s-1)", color: "var(--t-secondary)", border: "1px solid var(--b-default)" }
           }
-          title={isSelf ? "You cannot change your own role" : `Click to make ${member.role === "admin" ? "member" : "admin"}`}
+          title={
+            isSelf
+              ? "You cannot change your own role"
+              : member.role === "alumni"
+              ? "Use Edit to change alumni role"
+              : `Click to make ${member.role === "admin" ? "member" : "admin"}`
+          }
         >
           {member.role}
         </button>
       </td>
 
-      {/* Remove */}
-      <td className="py-3.5 px-4 text-right">
-        <button
-          onClick={remove}
-          disabled={isPending || isSelf}
-          className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{ color: "#dc2626" }}
-          title={isSelf ? "You cannot remove yourself" : "Remove from member list"}
-        >
-          Remove
-        </button>
+      {/* Actions */}
+      <td className="py-3.5 px-4">
+        <div className="flex items-center justify-end gap-1">
+          {/* Edit */}
+          <button
+            onClick={() => onEdit(member)}
+            disabled={isPending}
+            className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors disabled:opacity-30"
+            style={{ color: "var(--t-secondary)" }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--s-1)"}
+            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = "transparent"}
+            title="Edit member"
+          >
+            Edit
+          </button>
+
+          {/* Remove */}
+          <button
+            onClick={remove}
+            disabled={isPending || isSelf}
+            className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ color: "#dc2626" }}
+            title={isSelf ? "You cannot remove yourself" : "Remove from member list"}
+          >
+            Remove
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -231,7 +410,8 @@ export default function MembersClient({
   members: Member[];
   currentEmail: string;
 }) {
-  const [showModal, setShowModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [query, setQuery] = useState("");
 
   const filtered = members.filter((m) => {
@@ -246,6 +426,7 @@ export default function MembersClient({
 
   const admins = filtered.filter((m) => m.role === "admin");
   const regularMembers = filtered.filter((m) => m.role === "member");
+  const alumni = filtered.filter((m) => m.role === "alumni");
 
   return (
     <>
@@ -258,7 +439,7 @@ export default function MembersClient({
           className="input max-w-xs"
         />
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => setShowAddModal(true)}
           className="btn btn-primary shrink-0"
         >
           + Add Member
@@ -313,7 +494,7 @@ export default function MembersClient({
                   </td>
                 </tr>
                 {admins.map((m) => (
-                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} />
+                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} />
                 ))}
               </>
             )}
@@ -330,7 +511,24 @@ export default function MembersClient({
                   </td>
                 </tr>
                 {regularMembers.map((m) => (
-                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} />
+                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} />
+                ))}
+              </>
+            )}
+
+            {alumni.length > 0 && (
+              <>
+                <tr style={{ background: "var(--s-1)", borderTop: "1px solid var(--b-subtle)" }}>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: "var(--t-muted)" }}
+                  >
+                    Alumni — {alumni.length}
+                  </td>
+                </tr>
+                {alumni.map((m) => (
+                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} />
                 ))}
               </>
             )}
@@ -338,7 +536,14 @@ export default function MembersClient({
         </table>
       </div>
 
-      {showModal && <AddMemberModal onClose={() => setShowModal(false)} />}
+      {showAddModal && <AddMemberModal onClose={() => setShowAddModal(false)} />}
+      {editingMember && (
+        <EditMemberModal
+          member={editingMember}
+          currentEmail={currentEmail}
+          onClose={() => setEditingMember(null)}
+        />
+      )}
     </>
   );
 }

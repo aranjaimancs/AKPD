@@ -1,15 +1,41 @@
-import fs from "fs";
-import path from "path";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
-import { Profile } from "@/types/profile";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { Profile, TimelineEntry } from "@/types/profile";
 import SeniorForm from "@/components/SeniorForm";
 
-function getProfile(slug: string): Profile | null {
-  if (slug.includes("..")) return null;
-  const filePath = path.join(process.cwd(), "content", "seniors", slug, "profile.generated.json");
-  if (!fs.existsSync(filePath)) return null;
-  return JSON.parse(fs.readFileSync(filePath, "utf8")) as Profile;
+export const dynamic = "force-dynamic";
+
+async function getProfile(slug: string): Promise<Profile | null> {
+  if (!slug || slug.includes("..")) return null;
+  const { data } = await createAdminClient()
+    .from("seniors")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    slug: data.slug,
+    name: data.name,
+    headshot: data.headshot_url ?? "",
+    hometown: data.hometown ?? null,
+    majors: data.majors ?? [],
+    minors: data.minors ?? [],
+    pledgeClass: data.pledge_class,
+    gradYear: data.grad_year,
+    destinationTitle: data.destination_title,
+    destinationCompany: data.destination_company,
+    tags: data.tags ?? [],
+    summary: data.summary,
+    timeline: (data.timeline ?? []) as TimelineEntry[],
+    programs: data.programs ?? [],
+    recruiting: data.recruiting ?? [],
+    advice: data.advice ?? [],
+    flags: data.flags ?? [],
+    ...(data.linkedin_url ? { linkedIn: data.linkedin_url } : {}),
+    ...(data.email ? { email: data.email } : {}),
+    ...(data.website ? { website: data.website } : {}),
+  };
 }
 
 export default async function EditSeniorPage({
@@ -20,16 +46,14 @@ export default async function EditSeniorPage({
   await requireAdmin();
 
   const { slug } = await params;
-  const profile = getProfile(slug);
+  const profile = await getProfile(slug);
   if (!profile) notFound();
-
-  const existingHeadshotUrl = `/seniors-content/${slug}/${profile.headshot}`;
 
   return (
     <SeniorForm
       mode="edit"
       initialData={profile}
-      existingHeadshotUrl={existingHeadshotUrl}
+      existingHeadshotUrl={profile.headshot || undefined}
     />
   );
 }

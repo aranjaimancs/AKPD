@@ -33,3 +33,15 @@ CREATE POLICY "poster_update" ON opportunities
 -- Poster can delete their own
 CREATE POLICY "poster_delete" ON opportunities
   FOR DELETE USING (auth.uid() = posted_by);
+
+-- ============================================================
+-- Migration: approval workflow (run after initial schema)
+-- ============================================================
+
+-- Add status column for moderation state
+ALTER TABLE opportunities
+  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending'
+  CHECK (status IN ('pending', 'approved', 'rejected'));
+
+-- Mark all previously-active rows as approved (they were posted pre-moderation)
+UPDATE opportunities SET status = 'approved' WHERE is_active = true;

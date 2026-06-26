@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Profile = {
   full_name: string | null;
+  headline: string | null;
   bio: string | null;
   avatar_url: string | null;
   pledge_class: string | null;
@@ -26,6 +27,7 @@ export default async function SettingsPage() {
 
   let profile: Profile = {
     full_name: null,
+    headline: null,
     bio: null,
     avatar_url: null,
     pledge_class: null,
@@ -39,7 +41,7 @@ export default async function SettingsPage() {
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, bio, avatar_url, pledge_class, grad_year, major, linkedin_url, location_label, interests")
+      .select("full_name, headline, bio, avatar_url, pledge_class, grad_year, major, linkedin_url, location_label, interests")
       .eq("id", user.id)
       .maybeSingle();
     if (data) profile = data;

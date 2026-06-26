@@ -7,6 +7,7 @@ import { useTheme } from "@/components/ThemeProvider";
 
 type Profile = {
   full_name: string | null;
+  headline: string | null;
   bio: string | null;
   avatar_url: string | null;
   pledge_class: string | null;
@@ -55,6 +56,7 @@ export default function SettingsForm({ initialData, email }: Props) {
   const [result, action, pending] = useActionState(updateProfile, null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(initialData.avatar_url);
+  const { theme, setTheme } = useTheme();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -139,11 +141,21 @@ export default function SettingsForm({ initialData, email }: Props) {
         <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-5" style={{ color: "var(--t-muted)" }}>
           Personal info
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <Field label="Full name" name="full_name" defaultValue={initialData.full_name} placeholder="Jane Smith" />
-          <Field label="Pledge class" name="pledge_class" defaultValue={initialData.pledge_class} placeholder="e.g. Alpha, Beta" />
-          <Field label="Graduation year" name="grad_year" type="number" defaultValue={initialData.grad_year} placeholder="2026" />
-          <Field label="Major" name="major" defaultValue={initialData.major} placeholder="e.g. Finance & Statistics" />
+        <div className="flex flex-col gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Full name" name="full_name" defaultValue={initialData.full_name} placeholder="Jane Smith" />
+            <Field label="Pledge class" name="pledge_class" defaultValue={initialData.pledge_class} placeholder="e.g. Alpha, Beta" />
+            <Field label="Graduation year" name="grad_year" type="number" defaultValue={initialData.grad_year} placeholder="2026" />
+            <Field label="Major" name="major" defaultValue={initialData.major} placeholder="e.g. Finance & Statistics" />
+          </div>
+
+          <Field
+            label="Headline"
+            name="headline"
+            defaultValue={initialData.headline}
+            placeholder="e.g. Finance + Stats at UNC · or · Founder at Acme"
+            hint="Shows on your map pin and directory card — how you want to be introduced."
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -211,20 +223,69 @@ export default function SettingsForm({ initialData, email }: Props) {
         />
       </section>
 
+      <div style={{ borderBottom: "1px solid var(--b-subtle)" }} />
+
+      {/* ── Appearance ── */}
+      <section>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-5" style={{ color: "var(--t-muted)" }}>
+          Appearance
+        </h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--t-primary)" }}>Theme</p>
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+              Choose how the site looks for you
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1 p-1 rounded-xl"
+            style={{ background: "var(--s-1)", border: "1px solid var(--b-default)" }}
+          >
+            {/* Light option */}
+            <button
+              type="button"
+              onClick={() => setTheme("light")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all duration-150"
+              style={
+                theme === "light"
+                  ? { background: "var(--s-0)", color: "var(--t-primary)", boxShadow: "var(--shadow-xs)" }
+                  : { color: "var(--t-muted)" }
+              }
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+              Light
+            </button>
+            {/* Dark option */}
+            <button
+              type="button"
+              onClick={() => setTheme("dark")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all duration-150"
+              style={
+                theme === "dark"
+                  ? { background: "var(--s-0)", color: "var(--t-primary)", boxShadow: "var(--shadow-xs)" }
+                  : { color: "var(--t-muted)" }
+              }
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+              Dark
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* ── Feedback ── */}
       {result?.error && (
-        <div
-          className="rounded-xl p-4 text-[13px]"
-          style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#991b1b" }}
-        >
+        <div className="rounded-xl p-4 text-[13px] feedback-error">
           {result.error}
         </div>
       )}
       {result?.success && (
-        <div
-          className="rounded-xl p-4 text-[13px]"
-          style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#166534" }}
-        >
+        <div className="rounded-xl p-4 text-[13px] feedback-success">
           Profile saved successfully.
         </div>
       )}

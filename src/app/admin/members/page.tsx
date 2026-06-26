@@ -31,7 +31,7 @@ export default async function MembersPage() {
           <span style={{ color: "var(--b-strong)" }}>/</span>
           <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>Members</span>
           <span className="ml-auto text-[12px]" style={{ color: "var(--t-faint)" }}>
-            {members.length} total · {members.filter((m) => m.role === "admin").length} admin{members.filter((m) => m.role === "admin").length !== 1 ? "s" : ""}
+            {members.length} total · {members.filter((m) => m.role === "member").length} students · {members.filter((m) => m.role === "alumni").length} alumni · {members.filter((m) => m.role === "admin").length} admin{members.filter((m) => m.role === "admin").length !== 1 ? "s" : ""}
           </span>
         </div>
       </div>

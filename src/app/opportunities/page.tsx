@@ -5,17 +5,29 @@ import OpportunitiesClient, { type Opportunity } from "./OpportunitiesClient";
 export const dynamic = "force-dynamic";
 
 export default async function OpportunitiesPage() {
-  const [member, opportunitiesResult] = await Promise.all([
-    getCurrentMember(),
-    createAdminClient()
-      .from("opportunities")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false }),
-  ]);
+  const member = await getCurrentMember();
+  const role = member?.role ?? "member";
+
+  // Audience filter: admins see everything; students see 'all'+'students';
+  // alumni see 'all'+'alumni'.
+  const audienceValues =
+    role === "admin"
+      ? ["all", "students", "alumni"]
+      : role === "alumni"
+      ? ["all", "alumni"]
+      : ["all", "students"];
+
+  const opportunitiesResult = await createAdminClient()
+    .from("opportunities")
+    .select("*")
+    .eq("is_active", true)
+    .eq("status", "approved")
+    .in("audience", audienceValues)
+    .order("created_at", { ascending: false });
 
   const opportunities: Opportunity[] = (opportunitiesResult.data ?? []) as Opportunity[];
-  const isAdmin = member?.role === "admin";
+  const isAdmin = role === "admin";
+  const isAlumni = role === "alumni";
 
   const counts = {
     internship: opportunities.filter((o) => o.type === "internship").length,
@@ -53,6 +65,7 @@ export default async function OpportunitiesPage() {
           initialOpportunities={opportunities}
           currentUserId={member?.auth_user_id ?? undefined}
           isAdmin={isAdmin}
+          isAlumni={isAlumni}
         />
       </div>
     </main>

@@ -7,7 +7,7 @@ export type Member = {
   email: string;
   full_name: string | null;
   position: string | null;
-  role: "admin" | "member";
+  role: "admin" | "member" | "alumni";
   auth_user_id: string | null;
 };
 

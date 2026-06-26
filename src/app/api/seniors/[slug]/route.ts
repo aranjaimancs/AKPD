@@ -1,11 +1,24 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { getCurrentMember } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const ALLOWED_HEADSHOT_EXTS = ["jpg", "jpeg", "png", "webp"];
+const MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
 
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  // ── Auth guard — admin only ────────────────────────────────
+  const member = await getCurrentMember();
+  if (!member) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (member.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   try {
     const { slug } = await params;
 
@@ -13,10 +26,19 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
     }
 
-    const ROOT = process.cwd();
-    const seniorDir = path.join(ROOT, "content", "seniors", slug);
+    const admin = createAdminClient();
 
-    if (!fs.existsSync(seniorDir)) {
+    // Confirm the senior exists before updating
+    const { data: existing, error: fetchErr } = await admin
+      .from("seniors")
+      .select("id, headshot_url")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (fetchErr) {
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
+    }
+    if (!existing) {
       return NextResponse.json({ error: "Senior not found" }, { status: 404 });
     }
 
@@ -28,114 +50,80 @@ export async function PUT(
       return NextResponse.json({ error: "Missing profile data" }, { status: 400 });
     }
 
-    const profileData = JSON.parse(dataStr);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let profileData: any;
+    try {
+      profileData = JSON.parse(dataStr);
+    } catch {
+      return NextResponse.json({ error: "Invalid profile data" }, { status: 400 });
+    }
 
     if (!profileData.name?.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    // Read existing profile to preserve fields not in the form (e.g. flags)
-    const existingProfilePath = path.join(seniorDir, "profile.generated.json");
-    const existing = fs.existsSync(existingProfilePath)
-      ? (JSON.parse(fs.readFileSync(existingProfilePath, "utf8")) as { headshot?: string; flags?: string[] })
-      : {};
-
-    // Handle headshot: use new upload if provided, otherwise keep existing
-    let headshotFilename: string = existing.headshot ?? "headshot.jpg";
+    // ── Upload new headshot if provided ────────────────────────
+    let headshotUrl: string | null = existing.headshot_url ?? null;
     if (headshotFile && headshotFile.size > 0) {
-      const ext = headshotFile.name.split(".").pop()?.toLowerCase() || "jpg";
-      headshotFilename = `headshot.${ext}`;
+      const ext = headshotFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      if (!ALLOWED_HEADSHOT_EXTS.includes(ext)) {
+        return NextResponse.json({ error: "Invalid image format. Use JPG, PNG, or WebP." }, { status: 400 });
+      }
+      const storagePath = `${slug}/headshot.${ext}`;
       const bytes = await headshotFile.arrayBuffer();
-      fs.writeFileSync(path.join(seniorDir, headshotFilename), Buffer.from(bytes));
+
+      const { error: uploadErr } = await admin.storage
+        .from("senior-headshots")
+        .upload(storagePath, Buffer.from(bytes), {
+          contentType: MIME[ext] ?? "image/jpeg",
+          upsert: true,
+        });
+
+      if (uploadErr) {
+        console.error("Headshot upload error:", uploadErr.message);
+        return NextResponse.json({ error: "Failed to upload headshot. Try again." }, { status: 500 });
+      }
+
+      headshotUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/senior-headshots/${storagePath}`;
     }
 
+    // ── Update senior row ──────────────────────────────────────
     const gradYear = parseInt(profileData.gradYear) || new Date().getFullYear();
 
-    // Update meta.json
-    const meta = {
-      name: profileData.name.trim(),
-      headshot: headshotFilename,
-      gradYear,
-      pledgeClass: profileData.pledgeClass?.trim() || "",
-      destinationTitle: profileData.destinationTitle?.trim() || "",
-      destinationCompany: profileData.destinationCompany?.trim() || "",
-      visible: true,
-    };
-    fs.writeFileSync(path.join(seniorDir, "meta.json"), JSON.stringify(meta, null, 2));
+    const { error: updateErr } = await admin
+      .from("seniors")
+      .update({
+        name: profileData.name.trim(),
+        headshot_url: headshotUrl,
+        hometown: profileData.hometown?.trim() || null,
+        majors: (profileData.majors as string[]).filter(Boolean),
+        minors: (profileData.minors as string[]).filter(Boolean),
+        pledge_class: profileData.pledgeClass?.trim() || "",
+        grad_year: gradYear,
+        destination_title: profileData.destinationTitle?.trim() || "",
+        destination_company: profileData.destinationCompany?.trim() || "",
+        tags: (profileData.tags as string[]).filter(Boolean),
+        summary: profileData.summary?.trim() || "",
+        timeline: (profileData.timeline as { term: string; highlights: string[] }[]).filter(
+          (e) => e.term?.trim()
+        ),
+        programs: (profileData.programs as string[]).filter(Boolean),
+        recruiting: (profileData.recruiting as string[]).filter(Boolean),
+        advice: (profileData.advice as string[]).filter(Boolean),
+        linkedin_url: profileData.linkedIn?.trim() || null,
+        email: profileData.email?.trim() || null,
+        website: profileData.website?.trim() || null,
+      })
+      .eq("slug", slug);
 
-    // Write updated profile.generated.json
-    const profile = {
-      slug,
-      name: meta.name,
-      headshot: headshotFilename,
-      hometown: profileData.hometown?.trim() || null,
-      majors: (profileData.majors as string[]).filter(Boolean),
-      minors: (profileData.minors as string[]).filter(Boolean),
-      pledgeClass: meta.pledgeClass,
-      gradYear,
-      destinationTitle: meta.destinationTitle,
-      destinationCompany: meta.destinationCompany,
-      tags: (profileData.tags as string[]).filter(Boolean),
-      summary: profileData.summary?.trim() || "",
-      timeline: (profileData.timeline as { term: string; highlights: string[] }[]).filter(
-        (e) => e.term?.trim()
-      ),
-      programs: (profileData.programs as string[]).filter(Boolean),
-      recruiting: (profileData.recruiting as string[]).filter(Boolean),
-      advice: (profileData.advice as string[]).filter(Boolean),
-      // Preserve existing flags from prior compile
-      flags: existing.flags ?? [],
-      ...(profileData.linkedIn?.trim() ? { linkedIn: profileData.linkedIn.trim() } : {}),
-      ...(profileData.email?.trim() ? { email: profileData.email.trim() } : {}),
-      ...(profileData.website?.trim() ? { website: profileData.website.trim() } : {}),
-    };
-    fs.writeFileSync(existingProfilePath, JSON.stringify(profile, null, 2));
-
-    // Update seniors.json index
-    const indexPath = path.join(ROOT, "src", "data", "seniors.json");
-    let index: { slug: string; gradYear: number; name: string }[] = [];
-    if (fs.existsSync(indexPath)) {
-      try {
-        index = JSON.parse(fs.readFileSync(indexPath, "utf8"));
-      } catch {
-        index = [];
-      }
+    if (updateErr) {
+      console.error("Senior update error:", updateErr.message);
+      return NextResponse.json({ error: "Failed to update senior profile." }, { status: 500 });
     }
-
-    const indexEntry = {
-      slug,
-      name: profile.name,
-      headshot: headshotFilename,
-      majors: profile.majors,
-      minors: profile.minors,
-      pledgeClass: profile.pledgeClass,
-      gradYear: profile.gradYear,
-      destinationTitle: profile.destinationTitle,
-      destinationCompany: profile.destinationCompany,
-      summary: profile.summary,
-      tags: profile.tags,
-      ...(profile.linkedIn ? { linkedIn: profile.linkedIn } : {}),
-      ...(profile.email ? { email: profile.email } : {}),
-      ...(profile.website ? { website: profile.website } : {}),
-    };
-
-    const existingIdx = index.findIndex((s) => s.slug === slug);
-    if (existingIdx >= 0) {
-      index[existingIdx] = indexEntry as never;
-    } else {
-      index.push(indexEntry as never);
-    }
-
-    index.sort((a, b) => {
-      if (b.gradYear !== a.gradYear) return b.gradYear - a.gradYear;
-      return a.name.localeCompare(b.name);
-    });
-
-    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
 
     return NextResponse.json({ success: true, slug });
   } catch (err) {
     console.error("Error updating senior:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "An unexpected error occurred." }, { status: 500 });
   }
 }

@@ -1,19 +1,43 @@
-import fs from "fs";
-import path from "path";
 import Image from "next/image";
 import Link from "next/link";
 import { Profile, TimelineEntry } from "@/types/profile";
 import { notFound } from "next/navigation";
 import { getCurrentMember } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-function getProfile(slug: string): Profile | null {
-  const filePath = path.join(
-    process.cwd(), "content", "seniors", slug, "profile.generated.json"
-  );
-  if (!fs.existsSync(filePath)) return null;
-  return JSON.parse(fs.readFileSync(filePath, "utf8")) as Profile;
+async function getProfile(slug: string): Promise<Profile | null> {
+  if (!slug || slug.includes("..")) return null;
+  const { data } = await createAdminClient()
+    .from("seniors")
+    .select("*")
+    .eq("slug", slug)
+    .eq("visible", true)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    slug: data.slug,
+    name: data.name,
+    headshot: data.headshot_url ?? "",
+    hometown: data.hometown ?? null,
+    majors: data.majors ?? [],
+    minors: data.minors ?? [],
+    pledgeClass: data.pledge_class,
+    gradYear: data.grad_year,
+    destinationTitle: data.destination_title,
+    destinationCompany: data.destination_company,
+    tags: data.tags ?? [],
+    summary: data.summary,
+    timeline: (data.timeline ?? []) as TimelineEntry[],
+    programs: data.programs ?? [],
+    recruiting: data.recruiting ?? [],
+    advice: data.advice ?? [],
+    flags: data.flags ?? [],
+    ...(data.linkedin_url ? { linkedIn: data.linkedin_url } : {}),
+    ...(data.email ? { email: data.email } : {}),
+    ...(data.website ? { website: data.website } : {}),
+  };
 }
 
 // ── Timeline year-grouping ────────────────────────────────────────────────────
@@ -71,13 +95,14 @@ export default async function ProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const profile = getProfile(slug);
+  const profile = await getProfile(slug);
   if (!profile) notFound();
 
   const member = await getCurrentMember();
   const isAdmin = member?.role === "admin";
 
-  const headshotUrl = `/seniors-content/${slug}/${profile.headshot}`;
+  // headshot is now a full Supabase Storage URL (or empty string if none uploaded yet)
+  const headshotUrl = profile.headshot || null;
   const academicLine = [
     ...profile.majors,
     ...profile.minors.map((m) => `${m} Minor`),
@@ -121,22 +146,29 @@ export default async function ProfilePage({
             {/* Photo */}
             <div className="shrink-0">
               <div
-                className="relative rounded-2xl overflow-hidden"
+                className="relative rounded-2xl overflow-hidden flex items-center justify-center"
                 style={{
                   width: 160,
                   height: 200,
                   boxShadow: "var(--shadow-lg)",
                   border: "1px solid var(--b-default)",
+                  background: "var(--s-1)",
                 }}
               >
-                <Image
-                  src={headshotUrl}
-                  alt={profile.name}
-                  fill
-                  className="object-cover"
-                  sizes="160px"
-                  priority
-                />
+                {headshotUrl ? (
+                  <Image
+                    src={headshotUrl}
+                    alt={profile.name}
+                    fill
+                    className="object-cover"
+                    sizes="160px"
+                    priority
+                  />
+                ) : (
+                  <span className="text-3xl font-bold" style={{ color: "var(--akp-gold)" }}>
+                    {profile.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+                  </span>
+                )}
               </div>
             </div>
 

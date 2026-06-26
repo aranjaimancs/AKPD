@@ -1,23 +1,40 @@
-import fs from "fs";
-import path from "path";
 import Link from "next/link";
-import { SeniorIndex } from "@/types/profile";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentMember } from "@/lib/auth";
 import SeniorsGrid from "@/components/SeniorsGrid";
+import { SeniorIndex } from "@/types/profile";
 
 export const dynamic = "force-dynamic";
 
-function getSeniors(): SeniorIndex[] {
-  const indexPath = path.join(process.cwd(), "src", "data", "seniors.json");
-  if (!fs.existsSync(indexPath)) return [];
-  return JSON.parse(fs.readFileSync(indexPath, "utf8")) as SeniorIndex[];
-}
-
 export default async function SeniorsPage() {
-  const [seniors, member] = await Promise.all([
-    Promise.resolve(getSeniors()),
+  const [seniorsResult, member] = await Promise.all([
+    createAdminClient()
+      .from("seniors")
+      .select(
+        "slug, name, headshot_url, majors, minors, pledge_class, grad_year, destination_title, destination_company, tags, summary, linkedin_url, email, website"
+      )
+      .eq("visible", true)
+      .order("grad_year", { ascending: false })
+      .order("name"),
     getCurrentMember(),
   ]);
+
+  const seniors: SeniorIndex[] = (seniorsResult.data ?? []).map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    headshot: r.headshot_url ?? "",
+    majors: r.majors ?? [],
+    minors: r.minors ?? [],
+    pledgeClass: r.pledge_class,
+    gradYear: r.grad_year,
+    destinationTitle: r.destination_title,
+    destinationCompany: r.destination_company,
+    tags: r.tags ?? [],
+    summary: r.summary,
+    ...(r.linkedin_url ? { linkedIn: r.linkedin_url } : {}),
+    ...(r.email ? { email: r.email } : {}),
+    ...(r.website ? { website: r.website } : {}),
+  }));
 
   const isAdmin = member?.role === "admin";
   const companies = new Set(seniors.map((s) => s.destinationCompany)).size;

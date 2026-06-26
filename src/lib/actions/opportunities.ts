@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type OpportunityFormState = {
   error?: string;
   success?: boolean;
+  pending?: boolean; // true when submitted for review (non-admin poster)
 };
 
 export async function postOpportunity(
@@ -21,6 +22,7 @@ export async function postOpportunity(
   const title = (formData.get("title") as string)?.trim();
   const organization = (formData.get("organization") as string)?.trim();
   const type = formData.get("type") as string;
+  const audience = formData.get("audience") as string || "all";
   const description = (formData.get("description") as string)?.trim() || null;
   const deadline = (formData.get("deadline") as string) || null;
   const link = (formData.get("link") as string)?.trim() || null;
@@ -30,9 +32,21 @@ export async function postOpportunity(
   if (!["internship", "full-time", "club", "research", "other"].includes(type)) {
     return { error: "Invalid type." };
   }
+  if (!["all", "students", "alumni"].includes(audience)) {
+    return { error: "Invalid audience." };
+  }
 
-  // Get poster's name from profiles
   const admin = createAdminClient();
+
+  // Check if poster is an admin — admins get auto-approved
+  const { data: member } = await admin
+    .from("members")
+    .select("role")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  const isAdmin = member?.role === "admin";
+
   const { data: profile } = await admin
     .from("profiles")
     .select("full_name, email")
@@ -45,12 +59,14 @@ export async function postOpportunity(
     title,
     organization,
     type,
+    audience,
     description,
     deadline: deadline || null,
     link: link || null,
     posted_by: user.id,
     posted_by_name,
     is_active: true,
+    status: isAdmin ? "approved" : "pending",
   });
 
   if (error) {
@@ -59,7 +75,61 @@ export async function postOpportunity(
   }
 
   revalidatePath("/opportunities");
-  return { success: true };
+  if (isAdmin) revalidatePath("/admin/opportunities");
+  return { success: true, pending: !isAdmin };
+}
+
+export async function approveOpportunity(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const admin = createAdminClient();
+
+  const { data: member } = await admin
+    .from("members")
+    .select("role")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (member?.role !== "admin") return { error: "Unauthorized." };
+
+  const { error } = await admin
+    .from("opportunities")
+    .update({ status: "approved" })
+    .eq("id", id);
+
+  if (error) return { error: "Could not approve opportunity." };
+
+  revalidatePath("/admin/opportunities");
+  revalidatePath("/opportunities");
+  return {};
+}
+
+export async function rejectOpportunity(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const admin = createAdminClient();
+
+  const { data: member } = await admin
+    .from("members")
+    .select("role")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (member?.role !== "admin") return { error: "Unauthorized." };
+
+  const { error } = await admin
+    .from("opportunities")
+    .update({ status: "rejected", is_active: false })
+    .eq("id", id);
+
+  if (error) return { error: "Could not reject opportunity." };
+
+  revalidatePath("/admin/opportunities");
+  return {};
 }
 
 export async function deleteOpportunity(id: string): Promise<{ error?: string }> {
@@ -87,5 +157,6 @@ export async function deleteOpportunity(id: string): Promise<{ error?: string }>
 
   if (error) return { error: "Could not remove opportunity." };
   revalidatePath("/opportunities");
+  revalidatePath("/admin/opportunities");
   return {};
 }

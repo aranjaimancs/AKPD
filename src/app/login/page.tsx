@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import ErrorBanner from "./ErrorBanner";
-import SignInButton from "./SignInButton";
+import LoginPanel from "./LoginPanel";
 
 export default function LoginPage() {
   return (
@@ -30,7 +30,7 @@ export default function LoginPage() {
               Alpha Kappa Psi
             </p>
             <p className="text-[11px] mt-0.5" style={{ color: "rgba(201,168,76,0.7)" }}>
-              Delta Chapter
+              Alpha Tau Chapter
             </p>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default function LoginPage() {
             className="text-5xl font-extrabold text-white leading-[1.08] mb-5"
             style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
           >
-            Everything your<br />chapter needs,<br /><em style={{ fontStyle: "normal", color: "var(--akp-gold)" }}>in one place.</em>
+            All your professional<br />development needs,<br /><em style={{ fontStyle: "normal", color: "var(--akp-gold)" }}>in one place.</em>
           </h1>
           <p className="text-[15px] leading-relaxed max-w-xs" style={{ color: "rgba(200,215,235,0.75)" }}>
             Senior profiles, recruiting resources, the alumni network, and live opportunities — built by members, for members.
@@ -103,16 +103,15 @@ export default function LoginPage() {
             Sign in to AKPD
           </h2>
           <p className="text-sm mb-8" style={{ color: "var(--t-secondary)" }}>
-            Use your chapter Google account to access the portal.
+            Use your chapter email or Google account to access the portal.
           </p>
 
-          {/* Error banner */}
+          {/* OAuth error banner (for Google callback errors) */}
           <Suspense>
             <ErrorBanner />
           </Suspense>
 
-          {/* Google sign-in */}
-          <SignInButton />
+          <LoginPanel />
 
           <p className="mt-5 text-xs text-center" style={{ color: "var(--t-muted)" }}>
             Access is limited to authorized AKPsi members.
@@ -121,7 +120,7 @@ export default function LoginPage() {
 
         {/* Bottom attribution */}
         <p className="absolute bottom-6 text-[11px]" style={{ color: "var(--t-faint)" }}>
-          Alpha Kappa Psi · Delta Chapter
+          Alpha Kappa Psi · Alpha Tau Chapter
         </p>
       </div>
     </div>

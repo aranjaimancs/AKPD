@@ -53,7 +53,6 @@ function ResetPasswordInner() {
     setDone(true);
     // New users (no full_name yet) still need to complete onboarding.
     // Existing users go straight to the portal.
-    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const dest = user?.user_metadata?.onboarding_complete ? "/people" : "/onboarding";
     setTimeout(() => router.push(dest), 2000);

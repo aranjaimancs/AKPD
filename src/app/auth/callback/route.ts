@@ -29,10 +29,18 @@ function getSiteUrl(request: NextRequest): string {
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  // Email invite/recovery links use token_hash+type instead of a PKCE code.
+  const tokenHash = url.searchParams.get("token_hash");
+  const tokenType = (url.searchParams.get("type") ?? "magiclink") as
+    | "recovery"
+    | "invite"
+    | "signup"
+    | "email"
+    | "magiclink";
   const next = url.searchParams.get("next") ?? "/people";
   const siteUrl = getSiteUrl(request);
 
-  if (!code) {
+  if (!code && !tokenHash) {
     return NextResponse.redirect(new URL("/login?error=no_code", siteUrl));
   }
 
@@ -60,14 +68,33 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  // ── Establish session ─────────────────────────────────────────────────────
+  // OAuth (Google) sends a PKCE `code`; email invite/recovery links send a
+  // `token_hash` with a `type`. Handle both so a single callback URL covers
+  // every auth flow without needing extra entries in Supabase's redirect allowlist.
+  let sessionUser: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"];
 
-  if (error || !data.user) {
-    console.error("Auth callback error:", error?.message);
-    return NextResponse.redirect(new URL("/login?error=auth_failed", siteUrl));
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error || !data.user) {
+      console.error("Auth callback code error:", error?.message);
+      return NextResponse.redirect(new URL("/login?error=auth_failed", siteUrl));
+    }
+    sessionUser = data.user;
+  } else {
+    // token_hash — invite or recovery
+    const { data, error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash!,
+      type: tokenType,
+    });
+    if (error || !data.user) {
+      console.error("Auth callback OTP error:", error?.message);
+      return NextResponse.redirect(new URL("/login?error=auth_failed", siteUrl));
+    }
+    sessionUser = data.user;
   }
 
-  const email = data.user.email?.toLowerCase().trim();
+  const email = sessionUser.email?.toLowerCase().trim();
   if (!email) {
     return NextResponse.redirect(new URL("/login?error=no_email", siteUrl));
   }
@@ -93,11 +120,11 @@ export async function GET(request: NextRequest) {
   // ── Link auth_user_id + upsert profile (parallel) ─────────────────────────
   await Promise.all([
     !member.auth_user_id
-      ? admin.from("members").update({ auth_user_id: data.user.id }).eq("id", member.id)
+      ? admin.from("members").update({ auth_user_id: sessionUser.id }).eq("id", member.id)
       : Promise.resolve(),
     admin
       .from("profiles")
-      .upsert({ id: data.user.id, email }, { onConflict: "id", ignoreDuplicates: true }),
+      .upsert({ id: sessionUser.id, email }, { onConflict: "id", ignoreDuplicates: true }),
   ]);
 
   // ── Check profile completeness to route correctly ─────────────────────────
@@ -105,13 +132,13 @@ export async function GET(request: NextRequest) {
   const { data: profile } = await admin
     .from("profiles")
     .select("full_name")
-    .eq("id", data.user.id)
+    .eq("id", sessionUser.id)
     .maybeSingle();
 
   const isNewUser = !profile?.full_name;
 
   // ── Stamp role + onboarding status in JWT metadata ────────────────────────
-  await admin.auth.admin.updateUserById(data.user.id, {
+  await admin.auth.admin.updateUserById(sessionUser.id, {
     user_metadata: {
       role: member.role,
       // Existing users get marked complete immediately so they never hit /onboarding.
@@ -130,8 +157,7 @@ export async function GET(request: NextRequest) {
 
   // Everyone else → next param (default /people)
   // Copy session cookies from cookieResponse onto the new redirect response.
-  const destination = isNewUser && hasExplicitNext ? next : next;
-  const finalResponse = NextResponse.redirect(new URL(destination, siteUrl));
+  const finalResponse = NextResponse.redirect(new URL(next, siteUrl));
   cookieResponse.headers.getSetCookie().forEach((cookie) => {
     finalResponse.headers.append("Set-Cookie", cookie);
   });

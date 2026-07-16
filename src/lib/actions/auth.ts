@@ -114,16 +114,38 @@ export async function sendPasswordReset(
   const redirectTo = `${siteUrl}/auth/callback?next=/auth/reset-password`;
 
   if (member.auth_user_id) {
-    // Has signed in before → auth.users row exists → send password reset email.
+    // Has signed in before → confirmed auth account exists → send recovery email.
     const supabase = await createClient();
     await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   } else {
-    // Never signed in → no auth.users row yet → use invite (creates account + sends email).
-    // If inviteUserByEmail fails it means the user was already invited once but never
-    // completed sign-in (auth_user_id wasn't set). Fall back to resetPasswordForEmail
-    // which works for any existing account, even one created via a previous invite.
+    // No auth account yet → try to invite (creates account + sends email in one step).
     const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+
     if (inviteErr) {
+      // inviteUserByEmail fails when an auth account already exists (e.g. a previous
+      // invite whose link expired before the user clicked it). In that case:
+      //  1. Find the existing auth account.
+      //  2. Confirm their email if it wasn't confirmed yet — resetPasswordForEmail
+      //     silently does nothing for unconfirmed addresses in some Supabase configs.
+      //  3. Link auth_user_id on our members row so future sign-ins resolve correctly.
+      //  4. Send the recovery (set-password) email.
+      const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const existingAuthUser = usersData?.users?.find(
+        (u) => u.email?.toLowerCase().trim() === email
+      );
+
+      if (existingAuthUser) {
+        const needsConfirm = !existingAuthUser.email_confirmed_at;
+        await Promise.all([
+          needsConfirm
+            ? admin.auth.admin.updateUserById(existingAuthUser.id, { email_confirm: true })
+            : Promise.resolve(),
+          !member.auth_user_id
+            ? admin.from("members").update({ auth_user_id: existingAuthUser.id }).eq("id", member.id)
+            : Promise.resolve(),
+        ]);
+      }
+
       const supabase = await createClient();
       await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     }

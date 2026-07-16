@@ -96,3 +96,57 @@ export async function removeMember(
   revalidatePath("/admin/members");
   return {};
 }
+
+/**
+ * Directly set a password for a member without sending any email.
+ * If the member has never signed in, creates their auth account first.
+ */
+export async function setMemberPassword(
+  memberId: string,
+  password: string
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  if (!password || password.length < 6) return { error: "Password must be at least 6 characters." };
+
+  const admin = createAdminClient();
+
+  const { data: member } = await admin
+    .from("members")
+    .select("id, email, auth_user_id, role")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (!member) return { error: "Member not found." };
+
+  if (member.auth_user_id) {
+    // Auth account already exists — just update the password
+    const { error } = await admin.auth.admin.updateUserById(member.auth_user_id, { password });
+    if (error) {
+      console.error("setMemberPassword update error:", error.message);
+      return { error: "Failed to update password." };
+    }
+  } else {
+    // No auth account yet — create one with email pre-confirmed (no link needed)
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email: member.email,
+      password,
+      email_confirm: true,
+    });
+    if (error) {
+      console.error("setMemberPassword create error:", error.message);
+      return { error: "Failed to create account. The email may already have an auth account." };
+    }
+
+    const userId = created.user.id;
+
+    await admin.from("members").update({ auth_user_id: userId }).eq("id", memberId);
+    await admin.from("profiles").upsert({ id: userId, email: member.email }, { onConflict: "id", ignoreDuplicates: true });
+    await admin.auth.admin.updateUserById(userId, {
+      user_metadata: { role: member.role },
+    });
+  }
+
+  revalidatePath("/admin/members");
+  return {};
+}

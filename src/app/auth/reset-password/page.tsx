@@ -18,23 +18,13 @@ function ResetPasswordInner() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  // Exchange the token hash for a session when the page loads
+  // The callback already exchanged the code and set up the session — we just
+  // need to confirm a valid session exists before showing the password form.
   useEffect(() => {
-    const tokenHash = params.get("token_hash");
-    const type = params.get("type") as string | null;
-
-    // Accept both recovery (existing user reset) and invite (first-time setup)
-    if (!tokenHash || (type !== "recovery" && type !== "invite")) {
-      setStatus("error");
-      return;
-    }
-
     const supabase = createClient();
-    supabase.auth
-      .verifyOtp({ token_hash: tokenHash, type: type as "recovery" | "invite" })
-      .then(({ error }) => {
-        setStatus(error ? "error" : "ready");
-      });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setStatus(session ? "ready" : "error");
+    });
   }, [params]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,8 +51,12 @@ function ResetPasswordInner() {
     }
 
     setDone(true);
-    // Give them a moment to read the success message, then redirect
-    setTimeout(() => router.push("/people"), 2000);
+    // New users (no full_name yet) still need to complete onboarding.
+    // Existing users go straight to the portal.
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const dest = user?.user_metadata?.onboarding_complete ? "/people" : "/onboarding";
+    setTimeout(() => router.push(dest), 2000);
   };
 
   // ── States ────────────────────────────────────────────────────────────────
@@ -74,7 +68,7 @@ function ResetPasswordInner() {
           className="w-6 h-6 rounded-full border-2 animate-spin"
           style={{ borderColor: "var(--akp-navy)", borderTopColor: "transparent" }}
         />
-        <p className="text-[13px]">Verifying your link…</p>
+        <p className="text-[13px]">Loading…</p>
       </div>
     );
   }

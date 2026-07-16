@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { addMember, updateMember, updateMemberRole, removeMember } from "@/lib/actions/members";
+import { addMember, updateMember, updateMemberRole, removeMember, setMemberPassword } from "@/lib/actions/members";
 import type { Member } from "@/lib/auth";
 
 // ── Shared field ──────────────────────────────────────────────────────────────
@@ -276,16 +276,169 @@ function EditMemberModal({
   );
 }
 
+// ── Set-password modal ────────────────────────────────────────────────────────
+
+function SetPasswordModal({
+  member,
+  onClose,
+}: {
+  member: Member;
+  onClose: () => void;
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const password = (fd.get("password") as string).trim();
+    const confirm = (fd.get("confirm") as string).trim();
+
+    if (password !== confirm) { setError("Passwords don't match."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await setMemberPassword(member.id, password);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setDone(true);
+        setTimeout(onClose, 1200);
+      }
+    });
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(20,18,16,0.5)", backdropFilter: "blur(4px)" }}
+      onPointerDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl flex flex-col animate-scale-in"
+        style={{
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-xl)",
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-6 py-5"
+          style={{ borderBottom: "1px solid var(--b-subtle)" }}
+        >
+          <div>
+            <h2
+              className="text-[16px] font-bold"
+              style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
+            >
+              Set Password
+            </h2>
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+              {member.email}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--s-1)"}
+            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = "transparent"}
+          >
+            ✕
+          </button>
+        </div>
+
+        {done ? (
+          <div className="flex flex-col items-center gap-2 py-10 px-6">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+              style={{ background: "rgba(201,168,76,0.15)", color: "var(--akp-gold)" }}
+            >
+              ✓
+            </div>
+            <p className="font-semibold text-sm" style={{ color: "var(--t-primary)" }}>Password set.</p>
+            <p className="text-xs text-center" style={{ color: "var(--t-muted)" }}>
+              They can now sign in at /login with their email and this password.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
+            <div
+              className="rounded-xl px-4 py-3 text-[12px]"
+              style={{ background: "var(--s-1)", color: "var(--t-secondary)", border: "1px solid var(--b-subtle)" }}
+            >
+              This sets a password directly — no email link required. Share the password with the member securely.
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="input-label">New password</label>
+              <input
+                name="password"
+                type="password"
+                required
+                minLength={6}
+                placeholder="At least 6 characters"
+                className="input"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="input-label">Confirm password</label>
+              <input
+                name="confirm"
+                type="password"
+                required
+                placeholder="Repeat password"
+                className="input"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm" style={{ color: "#dc2626" }}>{error}</p>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="btn btn-primary btn-sm disabled:opacity-50"
+              >
+                {isPending ? "Setting…" : "Set Password"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Member row ────────────────────────────────────────────────────────────────
 
 function MemberRow({
   member,
   currentEmail,
   onEdit,
+  onSetPassword,
 }: {
   member: Member;
   currentEmail: string;
   onEdit: (m: Member) => void;
+  onSetPassword: (m: Member) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [removing, setRemoving] = useState(false);
@@ -372,6 +525,19 @@ function MemberRow({
       {/* Actions */}
       <td className="py-3.5 px-4">
         <div className="flex items-center justify-end gap-1">
+          {/* Set Password */}
+          <button
+            onClick={() => onSetPassword(member)}
+            disabled={isPending}
+            className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors disabled:opacity-30"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--s-1)"}
+            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = "transparent"}
+            title="Set password directly (no email needed)"
+          >
+            Set PW
+          </button>
+
           {/* Edit */}
           <button
             onClick={() => onEdit(member)}
@@ -412,6 +578,7 @@ export default function MembersClient({
 }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [settingPasswordFor, setSettingPasswordFor] = useState<Member | null>(null);
   const [query, setQuery] = useState("");
 
   const filtered = members.filter((m) => {
@@ -494,7 +661,7 @@ export default function MembersClient({
                   </td>
                 </tr>
                 {admins.map((m) => (
-                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} />
+                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} onSetPassword={setSettingPasswordFor} />
                 ))}
               </>
             )}
@@ -511,7 +678,7 @@ export default function MembersClient({
                   </td>
                 </tr>
                 {regularMembers.map((m) => (
-                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} />
+                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} onSetPassword={setSettingPasswordFor} />
                 ))}
               </>
             )}
@@ -528,7 +695,7 @@ export default function MembersClient({
                   </td>
                 </tr>
                 {alumni.map((m) => (
-                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} />
+                  <MemberRow key={m.id} member={m} currentEmail={currentEmail} onEdit={setEditingMember} onSetPassword={setSettingPasswordFor} />
                 ))}
               </>
             )}
@@ -542,6 +709,12 @@ export default function MembersClient({
           member={editingMember}
           currentEmail={currentEmail}
           onClose={() => setEditingMember(null)}
+        />
+      )}
+      {settingPasswordFor && (
+        <SetPasswordModal
+          member={settingPasswordFor}
+          onClose={() => setSettingPasswordFor(null)}
         />
       )}
     </>

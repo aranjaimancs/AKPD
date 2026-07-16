@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 /** Sign the current user out and redirect to /login. */
 export async function signOut() {
@@ -99,21 +100,33 @@ export async function sendPasswordReset(
 
   if (!member) return { error: "not_authorized" };
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  // Derive the canonical site URL from the actual request host so the
+  // redirectTo always matches what the user is accessing, even on preview
+  // deployments where VERCEL_URL is a per-deploy hash URL.
+  const hdrs = await headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+  const proto = hdrs.get("x-forwarded-proto") ?? "http";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `${proto}://${host}`;
 
-  const redirectTo = `${siteUrl}/auth/reset-password`;
+  // Route through /auth/callback — that URL is already in Supabase's allowlist
+  // (used by Google OAuth), so no extra allowlist configuration is needed.
+  // After exchanging the code the callback redirects to /auth/reset-password.
+  const redirectTo = `${siteUrl}/auth/callback?next=/auth/reset-password`;
 
-  // auth_user_id is linked on first sign-in (Google or email).
-  // If it's null the member has never authenticated → no auth.users row yet →
-  // use inviteUserByEmail which creates the account AND sends the email.
-  // resetPasswordForEmail silently does nothing for non-existent accounts.
   if (member.auth_user_id) {
+    // Has signed in before → auth.users row exists → send password reset email.
     const supabase = await createClient();
     await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   } else {
-    await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+    // Never signed in → no auth.users row yet → use invite (creates account + sends email).
+    // If inviteUserByEmail fails it means the user was already invited once but never
+    // completed sign-in (auth_user_id wasn't set). Fall back to resetPasswordForEmail
+    // which works for any existing account, even one created via a previous invite.
+    const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+    if (inviteErr) {
+      const supabase = await createClient();
+      await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    }
   }
 
   // Always return sent:true — don't leak account existence

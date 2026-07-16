@@ -121,12 +121,17 @@ export async function GET(request: NextRequest) {
   });
 
   // ── Redirect to the right destination ─────────────────────────────────────
-  // New users → /onboarding (cookieResponse already points there)
-  if (isNewUser) return cookieResponse;
+  // If an explicit `next` was provided (e.g. password setup flow), always honour
+  // it — even for new users — so the password page is shown before onboarding.
+  const hasExplicitNext = url.searchParams.has("next");
 
-  // Returning users → next param (default /people)
-  // Copy the session cookies from cookieResponse to the new redirect.
-  const finalResponse = NextResponse.redirect(new URL(next, siteUrl));
+  // New users with no explicit next → /onboarding
+  if (isNewUser && !hasExplicitNext) return cookieResponse;
+
+  // Everyone else → next param (default /people)
+  // Copy session cookies from cookieResponse onto the new redirect response.
+  const destination = isNewUser && hasExplicitNext ? next : next;
+  const finalResponse = NextResponse.redirect(new URL(destination, siteUrl));
   cookieResponse.headers.getSetCookie().forEach((cookie) => {
     finalResponse.headers.append("Set-Cookie", cookie);
   });

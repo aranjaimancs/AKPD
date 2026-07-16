@@ -47,6 +47,9 @@ export default async function SettingsPage() {
     if (data) profile = data;
   } catch {}
 
+  // "google" users signed in via OAuth — they don't have a password to change
+  const provider = (user.app_metadata?.provider as string | undefined) ?? "email";
+
   return (
     <main className="flex-1" style={{ background: "var(--s-page)" }}>
       {/* ── Title bar ── */}
@@ -62,7 +65,7 @@ export default async function SettingsPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-10">
-        <SettingsForm initialData={profile} email={user.email!} />
+        <SettingsForm initialData={profile} email={user.email!} provider={provider} />
       </div>
     </main>
   );

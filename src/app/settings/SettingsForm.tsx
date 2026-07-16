@@ -18,7 +18,7 @@ type Profile = {
   interests: string[] | null;
 };
 
-type Props = { initialData: Profile; email: string };
+type Props = { initialData: Profile; email: string; provider: string };
 
 function Field({
   label,
@@ -52,7 +52,99 @@ function Field({
   );
 }
 
-export default function SettingsForm({ initialData, email }: Props) {
+// ── Change-password section (email/password users only) ───────────────────────
+
+function ChangePasswordSection() {
+  const [newPw, setNewPw] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (newPw.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (newPw !== confirm) { setError("Passwords don't match."); return; }
+
+    setStatus("saving");
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { error: supaErr } = await supabase.auth.updateUser({ password: newPw });
+
+    if (supaErr) {
+      setError("Failed to update password. Please try again.");
+      setStatus("error");
+    } else {
+      setStatus("done");
+      setNewPw("");
+      setConfirm("");
+      setTimeout(() => setStatus("idle"), 3000);
+    }
+  }
+
+  return (
+    <>
+      <div style={{ borderBottom: "1px solid var(--b-subtle)" }} />
+
+      <section>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-5" style={{ color: "var(--t-muted)" }}>
+          Security
+        </h2>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-sm">
+          <div className="flex flex-col gap-1.5">
+            <label className="input-label">New password</label>
+            <input
+              type="password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              className="input"
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="input-label">Confirm new password</label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Same as above"
+              autoComplete="new-password"
+              className="input"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-xl px-4 py-3 text-[13px] feedback-error">{error}</div>
+          )}
+          {status === "done" && (
+            <div className="rounded-xl px-4 py-3 text-[13px] feedback-success">Password updated.</div>
+          )}
+
+          <div>
+            <button
+              type="submit"
+              disabled={status === "saving"}
+              className="btn btn-primary"
+              style={{ opacity: status === "saving" ? 0.6 : 1 }}
+            >
+              {status === "saving" ? "Updating…" : "Update password"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </>
+  );
+}
+
+// ── Main form ─────────────────────────────────────────────────────────────────
+
+export default function SettingsForm({ initialData, email, provider }: Props) {
   const [result, action, pending] = useActionState(updateProfile, null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(initialData.avatar_url);
@@ -74,6 +166,7 @@ export default function SettingsForm({ initialData, email }: Props) {
   })();
 
   return (
+    <div className="space-y-8">
     <form action={action} className="space-y-8">
 
       {/* ── Avatar section ── */}
@@ -305,5 +398,8 @@ export default function SettingsForm({ initialData, email }: Props) {
         </button>
       </div>
     </form>
+
+    {provider !== "google" && <ChangePasswordSection />}
+    </div>
   );
 }

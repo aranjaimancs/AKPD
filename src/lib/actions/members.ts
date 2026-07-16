@@ -127,24 +127,44 @@ export async function setMemberPassword(
       return { error: "Failed to update password." };
     }
   } else {
-    // No auth account yet — create one with email pre-confirmed (no link needed)
-    const { data: created, error } = await admin.auth.admin.createUser({
+    // No auth_user_id linked yet. Try to create a fresh account; if one already
+    // exists (e.g. from a previous invite email) find it and update instead.
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
       email: member.email,
       password,
       email_confirm: true,
     });
-    if (error) {
-      console.error("setMemberPassword create error:", error.message);
-      return { error: "Failed to create account. The email may already have an auth account." };
+
+    let userId: string;
+
+    if (createError) {
+      // Auth account already exists — find it by email and update the password.
+      const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const existing = usersData?.users?.find(
+        (u) => u.email?.toLowerCase().trim() === member.email.toLowerCase().trim()
+      );
+      if (!existing) {
+        console.error("setMemberPassword: createUser failed and no existing account found:", createError.message);
+        return { error: "Failed to set password. Please try again." };
+      }
+      userId = existing.id;
+      const { error: updateError } = await admin.auth.admin.updateUserById(userId, {
+        password,
+        email_confirm: true,
+      });
+      if (updateError) {
+        console.error("setMemberPassword update existing error:", updateError.message);
+        return { error: "Failed to update password." };
+      }
+    } else {
+      userId = created.user.id;
     }
 
-    const userId = created.user.id;
-
-    await admin.from("members").update({ auth_user_id: userId }).eq("id", memberId);
-    await admin.from("profiles").upsert({ id: userId, email: member.email }, { onConflict: "id", ignoreDuplicates: true });
-    await admin.auth.admin.updateUserById(userId, {
-      user_metadata: { role: member.role },
-    });
+    await Promise.all([
+      admin.from("members").update({ auth_user_id: userId }).eq("id", memberId),
+      admin.from("profiles").upsert({ id: userId, email: member.email }, { onConflict: "id", ignoreDuplicates: true }),
+      admin.auth.admin.updateUserById(userId, { user_metadata: { role: member.role } }),
+    ]);
   }
 
   revalidatePath("/admin/members");

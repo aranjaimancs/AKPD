@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import OnboardingWizard from "./OnboardingWizard";
 
@@ -36,8 +37,16 @@ export default async function OnboardingPage() {
 
   if (profile?.full_name) redirect("/people");
 
+  // Pull the name the admin entered so it's pre-filled — user can change it
+  const admin = createAdminClient();
+  const { data: member } = await admin
+    .from("members")
+    .select("full_name")
+    .eq("email", user.email!.toLowerCase().trim())
+    .maybeSingle();
+
   const initial: OnboardingProfile = {
-    full_name: profile?.full_name ?? null,
+    full_name: profile?.full_name ?? member?.full_name ?? null,
     headline: profile?.headline ?? null,
     bio: profile?.bio ?? null,
     avatar_url: profile?.avatar_url ?? null,

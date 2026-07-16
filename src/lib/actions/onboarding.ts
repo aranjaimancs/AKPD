@@ -134,6 +134,15 @@ export async function completeOnboarding(
     });
   }
 
+  // ── Sync full_name back to members allowlist ─────────────────────────────────
+  // Keeps the admin dashboard in sync if the user changed the pre-filled name.
+  if (fullName) {
+    await admin
+      .from("members")
+      .update({ full_name: fullName })
+      .eq("email", user.email!.toLowerCase().trim());
+  }
+
   // ── Mark onboarding complete in user metadata ─────────────────────────────────
   // This lets the client refresh the session to get the updated JWT, which is
   // used by middleware (if any) to skip the onboarding redirect on future visits.

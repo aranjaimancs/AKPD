@@ -171,6 +171,14 @@ export async function updateProfile(
     });
   }
 
+  // ── Sync full_name back to members allowlist ──────────────────────────────
+  if (fullName) {
+    await admin
+      .from("members")
+      .update({ full_name: fullName })
+      .eq("email", user.email!.toLowerCase().trim());
+  }
+
   revalidatePath("/settings");
   revalidatePath("/people");
 

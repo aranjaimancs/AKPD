@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { addMember, updateMember, updateMemberRole, removeMember, setMemberPassword } from "@/lib/actions/members";
+import { addMember, updateMember, updateMemberRole, removeMember, setMemberPassword, bulkAddMembers } from "@/lib/actions/members";
 import type { Member } from "@/lib/auth";
 
 // ── CSV parser ────────────────────────────────────────────────────────────────
@@ -490,6 +490,305 @@ function SetPasswordModal({
   );
 }
 
+// ── Import CSV modal ──────────────────────────────────────────────────────────
+
+function ImportModal({
+  existingEmails,
+  onClose,
+}: {
+  existingEmails: Set<string>;
+  onClose: () => void;
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [rows, setRows] = useState<ParsedRow[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [isPending, startTransition] = useTransition();
+  const [result, setResult] = useState<{ added: number; skipped: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  function handleFile(file: File) {
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const parsed = parseGoogleFormCsv(text);
+      setRows(parsed);
+      // Pre-select all valid, non-duplicate rows
+      const initial = new Set(
+        parsed
+          .filter((r) => r.valid && !existingEmails.has(r.email))
+          .map((r) => r.rawIndex)
+      );
+      setSelected(initial);
+      setError(null);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  function toggleRow(idx: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  }
+
+  function handleImport() {
+    const toImport = rows
+      .filter((r) => selected.has(r.rawIndex) && r.valid && !existingEmails.has(r.email))
+      .map(({ email, full_name, position }) => ({ email, full_name, position }));
+
+    if (!toImport.length) return;
+
+    setError(null);
+    startTransition(async () => {
+      const res = await bulkAddMembers(toImport);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setResult(res);
+        setTimeout(onClose, 1800);
+      }
+    });
+  }
+
+  const validRows    = rows.filter((r) => r.valid);
+  const dupRows      = rows.filter((r) => r.valid && existingEmails.has(r.email));
+  const invalidRows  = rows.filter((r) => !r.valid);
+  const importCount  = rows.filter((r) => selected.has(r.rawIndex)).length;
+  const hasRows      = rows.length > 0;
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(20,18,16,0.5)", backdropFilter: "blur(4px)" }}
+      onPointerDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div
+        className="w-full max-w-2xl rounded-2xl flex flex-col animate-scale-in"
+        style={{
+          background: "var(--s-0)",
+          border: "1px solid var(--b-default)",
+          boxShadow: "var(--shadow-xl)",
+          maxHeight: "85vh",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-6 py-5 shrink-0"
+          style={{ borderBottom: "1px solid var(--b-subtle)" }}
+        >
+          <div>
+            <h2 className="text-[16px] font-bold" style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}>
+              Import Members from CSV
+            </h2>
+            {fileName && (
+              <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>{fileName}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--s-1)"}
+            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = "transparent"}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto">
+          {result ? (
+            /* ── Success state ── */
+            <div className="flex flex-col items-center gap-2 py-12 px-6">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+                style={{ background: "rgba(201,168,76,0.15)", color: "var(--akp-gold)" }}
+              >
+                ✓
+              </div>
+              <p className="font-semibold text-sm" style={{ color: "var(--t-primary)" }}>
+                {result.added} member{result.added !== 1 ? "s" : ""} added.
+              </p>
+              {result.skipped > 0 && (
+                <p className="text-xs" style={{ color: "var(--t-muted)" }}>
+                  {result.skipped} skipped (already existed).
+                </p>
+              )}
+            </div>
+          ) : !hasRows ? (
+            /* ── Upload state ── */
+            <div className="p-6">
+              <label
+                className="flex flex-col items-center justify-center gap-3 rounded-xl cursor-pointer transition-colors"
+                style={{
+                  border: "2px dashed var(--b-default)",
+                  background: "var(--s-1)",
+                  minHeight: 160,
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.borderColor = "var(--akp-gold)"}
+                onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.borderColor = "var(--b-default)"}
+              >
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                />
+                <span className="text-2xl" style={{ color: "var(--t-muted)" }}>↑</span>
+                <span className="text-sm font-semibold" style={{ color: "var(--t-primary)" }}>
+                  Click to upload or drag & drop
+                </span>
+                <span className="text-xs text-center" style={{ color: "var(--t-muted)" }}>
+                  Export your Google Form responses as CSV and upload here.
+                  <br />
+                  Expected columns: <code style={{ color: "var(--t-secondary)" }}>Email Address, Full Name, Position</code>
+                </span>
+              </label>
+            </div>
+          ) : (
+            /* ── Review state ── */
+            <div className="flex flex-col">
+              {/* Summary bar */}
+              <div
+                className="px-6 py-3 text-[12px] flex gap-4 shrink-0"
+                style={{ background: "var(--s-1)", borderBottom: "1px solid var(--b-subtle)", color: "var(--t-secondary)" }}
+              >
+                <span>{validRows.length} valid</span>
+                {dupRows.length > 0 && (
+                  <span style={{ color: "#b45309" }}>{dupRows.length} already exist (skipped)</span>
+                )}
+                {invalidRows.length > 0 && (
+                  <span style={{ color: "#dc2626" }}>{invalidRows.length} missing email (skipped)</span>
+                )}
+              </div>
+
+              {/* Review table */}
+              <table className="w-full">
+                <thead>
+                  <tr style={{ background: "var(--s-1)" }}>
+                    <th className="px-4 py-2 w-8" />
+                    <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-2" style={{ color: "var(--t-muted)" }}>Name</th>
+                    <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-2" style={{ color: "var(--t-muted)" }}>Email</th>
+                    <th className="text-left text-[11px] font-bold uppercase tracking-[0.08em] px-4 py-2 hidden sm:table-cell" style={{ color: "var(--t-muted)" }}>Position</th>
+                    <th className="px-4 py-2 w-28" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const isDup     = row.valid && existingEmails.has(row.email);
+                    const isInvalid = !row.valid;
+                    const isDisabled = isDup || isInvalid;
+                    const isChecked  = selected.has(row.rawIndex);
+
+                    return (
+                      <tr
+                        key={row.rawIndex}
+                        className="border-t"
+                        style={{
+                          borderColor: "var(--b-default)",
+                          opacity: isDisabled ? 0.5 : 1,
+                        }}
+                      >
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={isDisabled}
+                            onChange={() => toggleRow(row.rawIndex)}
+                            className="accent-[var(--akp-gold)]"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-sm" style={{ color: "var(--t-primary)" }}>
+                          {row.full_name ?? <span style={{ color: "var(--t-faint)" }}>—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm" style={{ color: "var(--t-secondary)" }}>
+                          {row.email || <span style={{ color: "var(--t-faint)" }}>—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm hidden sm:table-cell" style={{ color: "var(--t-muted)" }}>
+                          {row.position ?? <span style={{ color: "var(--t-faint)" }}>—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {isDup && (
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                              style={{ background: "rgba(180,83,9,0.1)", color: "#b45309" }}
+                            >
+                              Already exists
+                            </span>
+                          )}
+                          {isInvalid && (
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                              style={{ background: "rgba(220,38,38,0.1)", color: "#dc2626" }}
+                            >
+                              Missing email
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {!result && (
+          <div
+            className="flex items-center justify-between gap-4 px-6 py-4 shrink-0"
+            style={{ borderTop: "1px solid var(--b-subtle)" }}
+          >
+            <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>
+              {hasRows
+                ? `${importCount} of ${rows.length} row${rows.length !== 1 ? "s" : ""} will be imported`
+                : "No file selected"}
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">
+                Cancel
+              </button>
+              {hasRows && (
+                <button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={importCount === 0 || isPending}
+                  className="btn btn-primary btn-sm disabled:opacity-50"
+                >
+                  {isPending ? "Importing…" : `Import ${importCount} Member${importCount !== 1 ? "s" : ""}`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <p className="text-sm px-6 pb-4 shrink-0" style={{ color: "#dc2626" }}>{error}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Member row ────────────────────────────────────────────────────────────────
 
 function MemberRow({
@@ -640,6 +939,7 @@ export default function MembersClient({
   currentEmail: string;
 }) {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [settingPasswordFor, setSettingPasswordFor] = useState<Member | null>(null);
   const [query, setQuery] = useState("");
@@ -668,6 +968,12 @@ export default function MembersClient({
           placeholder="Search by name, email, position…"
           className="input max-w-xs"
         />
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="btn btn-ghost shrink-0"
+        >
+          ↑ Import CSV
+        </button>
         <button
           onClick={() => setShowAddModal(true)}
           className="btn btn-primary shrink-0"
@@ -767,6 +1073,12 @@ export default function MembersClient({
       </div>
 
       {showAddModal && <AddMemberModal onClose={() => setShowAddModal(false)} />}
+      {showImportModal && (
+        <ImportModal
+          existingEmails={new Set(members.map((m) => m.email.toLowerCase()))}
+          onClose={() => setShowImportModal(false)}
+        />
+      )}
       {editingMember && (
         <EditMemberModal
           member={editingMember}

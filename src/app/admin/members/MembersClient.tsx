@@ -968,18 +968,20 @@ export default function MembersClient({
           placeholder="Search by name, email, position…"
           className="input max-w-xs"
         />
-        <button
-          onClick={() => setShowImportModal(true)}
-          className="btn btn-ghost shrink-0"
-        >
-          ↑ Import CSV
-        </button>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn btn-primary shrink-0"
-        >
-          + Add Member
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn btn-ghost shrink-0"
+          >
+            ↑ Import CSV
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn btn-primary shrink-0"
+          >
+            + Add Member
+          </button>
+        </div>
       </div>
 
       {/* Table */}

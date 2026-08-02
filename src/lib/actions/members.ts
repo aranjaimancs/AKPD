@@ -170,3 +170,49 @@ export async function setMemberPassword(
   revalidatePath("/admin/members");
   return {};
 }
+
+export type BulkMemberRow = {
+  email: string;
+  full_name: string | null;
+  position: string | null;
+};
+
+export async function bulkAddMembers(
+  rows: BulkMemberRow[]
+): Promise<{ added: number; skipped: number; error?: string }> {
+  await requireAdmin();
+
+  if (!rows.length) return { added: 0, skipped: 0 };
+
+  // Normalise + validate
+  const clean = rows
+    .map((r) => ({
+      email: r.email.toLowerCase().trim(),
+      full_name: r.full_name?.trim() || null,
+      position: r.position?.trim() || null,
+      role: "member" as const,
+    }))
+    .filter((r) => r.email.length > 0);
+
+  if (!clean.length) return { added: 0, skipped: rows.length };
+
+  const admin = createAdminClient();
+
+  // upsert with ignoreDuplicates: existing emails are silently skipped,
+  // returned data contains only the rows that were actually inserted.
+  const { data, error } = await admin
+    .from("members")
+    .upsert(clean, { onConflict: "email", ignoreDuplicates: true })
+    .select("id");
+
+  if (error) {
+    console.error("bulkAddMembers error:", error.message);
+    return { added: 0, skipped: rows.length, error: "Import failed. Please try again." };
+  }
+
+  const added = data?.length ?? 0;
+  const skipped = clean.length - added;
+
+  revalidatePath("/admin/members");
+  return { added, skipped };
+}

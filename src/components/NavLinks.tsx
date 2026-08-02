@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ALL_LINKS = [
   { href: "/people",        label: "People",        alumniVisible: true  },
   { href: "/recruitment",   label: "Recruitment",   alumniVisible: false },
+  { href: "/classes",       label: "Classes",       alumniVisible: false },
   { href: "/opportunities", label: "Opportunities", alumniVisible: true  },
   { href: "/seniors",       label: "Seniors",       alumniVisible: true  },
 ];

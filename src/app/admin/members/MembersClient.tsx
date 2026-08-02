@@ -4,6 +4,69 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { addMember, updateMember, updateMemberRole, removeMember, setMemberPassword } from "@/lib/actions/members";
 import type { Member } from "@/lib/auth";
 
+// ── CSV parser ────────────────────────────────────────────────────────────────
+
+type ParsedRow = {
+  email: string;
+  full_name: string | null;
+  position: string | null;
+  valid: boolean;
+  rawIndex: number;
+};
+
+/** Parse a single CSV line respecting RFC 4180 quoted fields. */
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { fields.push(current.trim()); current = ""; }
+      else { current += ch; }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+/**
+ * Parse a Google Forms CSV export into structured rows.
+ * Expected headers: Timestamp, Email Address, Full Name, Position
+ * Timestamp is ignored. Header matching is case-insensitive.
+ */
+function parseGoogleFormCsv(text: string): ParsedRow[] {
+  const lines = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .filter((l) => l.trim().length > 0);
+
+  if (lines.length < 2) return [];
+
+  const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase().trim());
+  const emailIdx = headers.findIndex((h) => h === "email address" || h === "email");
+  const nameIdx  = headers.findIndex((h) => h === "full name");
+  const posIdx   = headers.findIndex((h) => h === "position");
+
+  return lines.slice(1).map((line, i) => {
+    const fields = parseCSVLine(line);
+    const get = (idx: number) => (idx >= 0 ? (fields[idx] ?? "").trim() : "");
+
+    const email     = get(emailIdx).toLowerCase();
+    const full_name = get(nameIdx) || null;
+    const position  = get(posIdx) || null;
+
+    return { email, full_name, position, valid: email.length > 0, rawIndex: i };
+  });
+}
+
 // ── Shared field ──────────────────────────────────────────────────────────────
 
 function Field({

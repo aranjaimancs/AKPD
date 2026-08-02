@@ -220,7 +220,10 @@ function ReviewCard({
         {canRemove && (
           <button
             type="button"
-            onClick={() => removeClassReview(review.id)}
+            onClick={async () => {
+              const result = await removeClassReview(review.id);
+              if (result.error) alert(result.error);
+            }}
             className="btn btn-ghost btn-sm"
             style={{ fontSize: 11, padding: "3px 10px", color: "#dc2626", borderColor: "rgba(220,38,38,0.2)" }}
           >

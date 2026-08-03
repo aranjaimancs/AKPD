@@ -91,16 +91,28 @@ export async function completeOnboarding(
   }
 
   // ── Sync to people table (creates a new entry for this member) ───────────────
-  const { data: existingPerson } = await admin
+  // First try by auth_user_id; fall back to email for admin-added rows that
+  // predate the account link (they have no auth_user_id yet).
+  let { data: existingPerson } = await admin
     .from("people")
     .select("id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
+  if (!existingPerson && user.email) {
+    const { data: byEmail } = await admin
+      .from("people")
+      .select("id")
+      .ilike("email", user.email)
+      .maybeSingle();
+    if (byEmail) existingPerson = byEmail;
+  }
+
   if (existingPerson) {
     await admin
       .from("people")
       .update({
+        auth_user_id: user.id,  // link the row if it wasn't linked yet
         full_name: fullName || undefined,
         headline,
         location_label: locationLabel,
@@ -114,7 +126,7 @@ export async function completeOnboarding(
         pledge_class: pledgeClass || undefined,
         ...(avatarUrl !== undefined ? { headshot_url: avatarUrl } : {}),
       })
-      .eq("auth_user_id", user.id);
+      .eq("id", existingPerson.id);
   } else if (fullName) {
     await admin.from("people").insert({
       auth_user_id: user.id,

@@ -127,16 +127,29 @@ export async function updateProfile(
   // ── Sync to people table so location appears on the map ────────────────────
   // Only sync fields the user controls; admins keep title/company/etc editable.
   const admin = createAdminClient();
-  const { data: existing } = await admin
+
+  // First try by auth_user_id; fall back to email for admin-added rows that
+  // predate the account link (they have no auth_user_id yet).
+  let { data: existing } = await admin
     .from("people")
     .select("id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
+  if (!existing && user.email) {
+    const { data: byEmail } = await admin
+      .from("people")
+      .select("id")
+      .ilike("email", user.email)
+      .maybeSingle();
+    if (byEmail) existing = byEmail;
+  }
+
   if (existing) {
     await admin
       .from("people")
       .update({
+        auth_user_id: user.id,  // link the row if it wasn't linked yet
         full_name: fullName || undefined,
         headline: headline,
         location_label: locationLabel,
@@ -150,7 +163,7 @@ export async function updateProfile(
         pledge_class: pledgeClass || undefined,
         ...(avatarUrl !== undefined ? { headshot_url: avatarUrl } : {}),
       })
-      .eq("auth_user_id", user.id);
+      .eq("id", existing.id);
   } else if (fullName) {
     // Create a new people entry linked to this user
     await admin.from("people").insert({

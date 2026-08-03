@@ -10,17 +10,18 @@ const ThemeContext = createContext<{
 }>({ theme: "light", setTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
-
-  useEffect(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem("akpd-theme") as Theme | null;
     const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
-    const initial = stored ?? preferred;
-    setThemeState(initial);
-    document.documentElement.setAttribute("data-theme", initial);
-  }, []);
+    return stored ?? preferred;
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   const setTheme = (t: Theme) => {
     setThemeState(t);

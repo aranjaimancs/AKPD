@@ -171,6 +171,7 @@ function FieldModal({
 
   // Auto-derive slug from name when creating new
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!field && name) setSlug(slugify(name));
   }, [field, name]);
 

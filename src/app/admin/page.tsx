@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -16,6 +14,7 @@ async function fetchCounts() {
     fieldsResult,
     resourcesResult,
     pendingOpportunitiesResult,
+    seniorsResult,
   ] = await Promise.all([
     admin.from("members").select("id", { count: "exact", head: true }),
     admin.from("members").select("id", { count: "exact", head: true }).eq("role", "admin"),
@@ -24,17 +23,13 @@ async function fetchCounts() {
     admin.from("recruitment_fields").select("id", { count: "exact", head: true }),
     admin.from("recruitment_resources").select("id", { count: "exact", head: true }),
     admin.from("opportunities").select("id", { count: "exact", head: true }).eq("is_active", true).eq("status", "pending"),
+    admin.from("seniors").select("id", { count: "exact", head: true }),
   ]);
-
-  const indexPath = path.join(process.cwd(), "src", "data", "seniors.json");
-  const seniorsCount = fs.existsSync(indexPath)
-    ? (JSON.parse(fs.readFileSync(indexPath, "utf8")) as unknown[]).length
-    : 0;
 
   return {
     membersTotal: membersResult.count ?? 0,
     adminsTotal: adminsResult.count ?? 0,
-    seniorsTotal: seniorsCount,
+    seniorsTotal: seniorsResult.count ?? 0,
     peopleTotal: peopleResult.count ?? 0,
     onMapTotal: onMapResult.count ?? 0,
     fieldsTotal: fieldsResult.count ?? 0,

@@ -132,6 +132,7 @@ function ClusterLayer({
 }) {
   const map = useMap();
   const onClickRef = useRef(onMarkerClick);
+  // eslint-disable-next-line react-hooks/refs
   onClickRef.current = onMarkerClick;
 
   const scRef = useRef<Supercluster<PinProperties>>(
@@ -162,12 +163,14 @@ function ClusterLayer({
   useMapEvents({ moveend: updateViewport, zoomend: updateViewport });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateViewport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!viewport) return null;
 
+  // eslint-disable-next-line react-hooks/refs
   const items = scRef.current.getClusters(viewport.bounds, viewport.zoom);
 
   return (

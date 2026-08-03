@@ -460,7 +460,7 @@ export default async function ProfilePage({
                     style={{ color: "rgba(201,168,76,0.08)", fontFamily: "var(--font-display)" }}
                     aria-hidden
                   >
-                    "
+                    &ldquo;
                   </div>
                   <p
                     className="relative text-[14px] leading-relaxed italic"

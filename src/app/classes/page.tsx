@@ -30,7 +30,7 @@ export default async function ClassesPage() {
             Rate My <em>Class</em>
           </h1>
           <p className="page-subtitle">
-            Real talk from brothers who&apos;ve been there — ratings, difficulty, workload, and which Gen Ed boxes they tick.
+            Brothers rate what&apos;s worth taking — difficulty, workload, professor, and which Gen Ed requirements it covers.
           </p>
         </div>
       </div>

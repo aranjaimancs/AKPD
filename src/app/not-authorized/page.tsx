@@ -70,7 +70,7 @@ export default function NotAuthorizedPage() {
 
       {/* Footer */}
       <p className="absolute bottom-6 text-[11px]" style={{ color: "var(--t-faint)" }}>
-        Alpha Kappa Psi · Delta Chapter
+        Alpha Kappa Psi · Alpha Tau Chapter
       </p>
     </div>
   );

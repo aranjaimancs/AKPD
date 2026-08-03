@@ -47,10 +47,10 @@ export default function LoginPage() {
             className="text-5xl font-extrabold text-white leading-[1.08] mb-5"
             style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
           >
-            All your professional<br />development needs,<br /><em style={{ fontStyle: "normal", color: "var(--akp-gold)" }}>in one place.</em>
+            The chapter hub<br />for AKΨ<br /><em style={{ fontStyle: "normal", color: "var(--akp-gold)" }}>Alpha Tau.</em>
           </h1>
           <p className="text-[15px] leading-relaxed max-w-xs" style={{ color: "rgba(200,215,235,0.75)" }}>
-            Senior profiles, recruiting resources, the alumni network, and live opportunities — built by members, for members.
+            Senior write-ups, alumni connections, recruiting prep, class reviews, and open opportunities — all in one spot.
           </p>
         </div>
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
           {[
             { value: "100+", label: "Alumni" },
             { value: "4", label: "Career tracks" },
-            { value: "∞", label: "Connections" },
+            { value: "UNC", label: "Chapel Hill" },
           ].map(({ value, label }) => (
             <div key={label}>
               <p
@@ -103,7 +103,7 @@ export default function LoginPage() {
             Sign in to AKPD
           </h2>
           <p className="text-sm mb-8" style={{ color: "var(--t-secondary)" }}>
-            Use your chapter email or Google account to access the portal.
+            Sign in with your chapter email or Google.
           </p>
 
           {/* OAuth error banner (for Google callback errors) */}

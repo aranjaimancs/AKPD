@@ -14,7 +14,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "AKPsi — Senior Profiles",
-  description: "Stories, paths, and advice from Alpha Kappa Psi's graduating class.",
+  description: "Senior profiles, alumni network, recruiting prep, and class reviews for AKΨ Alpha Tau at UNC Chapel Hill.",
 };
 
 // Runs synchronously before paint to prevent flash of wrong theme

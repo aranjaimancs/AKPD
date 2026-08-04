@@ -26,6 +26,7 @@ const PeopleMapInner = dynamic(() => import("./PeopleMapInner"), {
 export type Person = {
   id: string;
   full_name: string;
+  email: string | null;
   headshot_url: string | null;
   headline: string | null;
   title: string | null;
@@ -380,24 +381,39 @@ function ProfileDetailCard({
           )}
         </div>
 
-        {/* Footer — LinkedIn */}
-        {linkedinHref && (
+        {/* Footer — Email + LinkedIn */}
+        {(person.email || linkedinHref) && (
           <>
             <div style={{ borderTop: "1px solid var(--b-subtle)" }} />
-            <div className="px-4 py-3">
-              <a
-                href={linkedinHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-[12px] font-semibold"
-                style={{ color: "#0077b5" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
-                View LinkedIn profile →
-              </a>
+            <div className="px-4 py-3 flex flex-col gap-2">
+              {person.email && (
+                <a
+                  href={`mailto:${person.email}`}
+                  className="flex items-center gap-2 text-[12px] font-semibold"
+                  style={{ color: "var(--akp-gold)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                  {person.email}
+                </a>
+              )}
+              {linkedinHref && (
+                <a
+                  href={linkedinHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-[12px] font-semibold"
+                  style={{ color: "#0077b5" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
+                    <circle cx="4" cy="4" r="2" />
+                  </svg>
+                  View LinkedIn profile →
+                </a>
+              )}
             </div>
           </>
         )}

@@ -73,6 +73,7 @@ export async function upsertPerson(
     : [];
   const row = {
     full_name: (formData.get("full_name") as string).trim(),
+    email: (formData.get("email") as string).trim().toLowerCase() || null,
     member_type: formData.get("member_type") as string,
     location_label: locationLabel || null,
     latitude: lat,

@@ -13,6 +13,7 @@ import type { PersonFormState } from "@/lib/actions/people";
 export type PersonRow = {
   id: string;
   full_name: string;
+  email: string | null;
   headshot_url: string | null;
   title: string | null;
   company: string | null;
@@ -236,6 +237,17 @@ function PersonModal({
                   required
                   placeholder="Jane Smith"
                   defaultValue={person?.full_name}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <Field
+                  label="Email"
+                  name="email"
+                  type="email"
+                  placeholder="name@unc.edu"
+                  defaultValue={person?.email}
+                  hint="Used to link their map pin to their portal account so their profile photo syncs automatically."
                 />
               </div>
 

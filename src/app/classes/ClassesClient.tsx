@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { postClassReview, removeClassReview } from "@/lib/actions/classes";
 import { FOCUS_AREAS } from "./curriculum";
+import ClassResourcesTab from "./ClassResourcesTab";
+import type { ClassResource, CourseLookup } from "@/lib/actions/classResources";
 
 /* ── Types ── */
 export type ClassReview = {
@@ -135,7 +137,7 @@ function ReviewCard({
         <div className="flex-1 min-w-0">
           <span
             className="text-[17px] font-black tracking-tight leading-none"
-            style={{ color: "var(--akp-navy)", fontFamily: "var(--font-display)" }}
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
           >
             {review.course_code}
           </span>
@@ -542,30 +544,6 @@ function PostModal({ onClose }: { onClose: () => void }) {
                     </div>
                   </div>
 
-                  {/* Making Connections (legacy) */}
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.1em] mb-2" style={{ color: "var(--t-muted)" }}>
-                      Making Connections — legacy (pre-2022)
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {FOCUS_AREAS.makingConnections.map(({ code, label }) => (
-                        <button
-                          key={code}
-                          type="button"
-                          onClick={() => toggleFocusArea(code)}
-                          title={label}
-                          className="pill text-[11px]"
-                          style={
-                            focusAreas.includes(code)
-                              ? { background: "var(--akp-navy)", color: "#fff", borderColor: "var(--akp-navy)" }
-                              : {}
-                          }
-                        >
-                          {code}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
                 {/* Hidden inputs — one per selected focus area */}
                 {focusAreas.map((code) => (
@@ -615,19 +593,42 @@ function PostModal({ onClose }: { onClose: () => void }) {
 /* ── Main Client Component ── */
 export default function ClassesClient({
   initialReviews,
+  initialResources,
   currentUserId,
   isAdmin,
 }: {
   initialReviews: ClassReview[];
+  initialResources: ClassResource[];
   currentUserId: string;
   isAdmin: boolean;
 }) {
+  const [activeTab,      setActiveTab]      = useState<"reviews" | "resources">("reviews");
   const [showModal,      setShowModal]      = useState(false);
   const [query,          setQuery]          = useState("");
   const [activeDept,     setActiveDept]     = useState("all");
   const [activeDiff,     setActiveDiff]     = useState("all");
   const [activeWorkload, setActiveWorkload] = useState("all");
   const [recommendOnly,  setRecommendOnly]  = useState(false);
+
+  // Course lookup built from both reviews and resources — used by AddResourceModal
+  const courseLookup = useMemo<CourseLookup>(() => {
+    const map: CourseLookup = {};
+    for (const r of initialReviews) {
+      if (!map[r.course_code])
+        map[r.course_code] = { course_name: r.course_name, department: r.department };
+    }
+    for (const r of initialResources) {
+      if (!map[r.course_code])
+        map[r.course_code] = { course_name: r.course_name, department: r.department };
+    }
+    return map;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Count unique course folders for the tab badge
+  const folderCount = useMemo(
+    () => new Set(initialResources.map((r) => r.course_code)).size,
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   // Unique sorted departments from all reviews
   const departments = Array.from(
@@ -654,6 +655,54 @@ export default function ClassesClient({
 
   return (
     <>
+      {/* ── Tab switcher ── */}
+      <div className="flex items-center gap-1 mb-8 pb-5" style={{ borderBottom: "1px solid var(--b-subtle)" }}>
+        {(["reviews", "resources"] as const).map((tab) => {
+          const isActive = activeTab === tab;
+          const count = tab === "reviews" ? initialReviews.length : folderCount;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="relative px-4 py-2 text-[14px] font-semibold rounded-lg transition-all"
+              style={{
+                color: isActive ? "var(--t-primary)" : "var(--t-muted)",
+                background: isActive ? "var(--s-1)" : "transparent",
+              }}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <span
+                className="ml-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: isActive ? "var(--akp-navy)" : "var(--s-2)",
+                  color: isActive ? "#fff" : "var(--t-muted)",
+                }}
+              >
+                {count}
+              </span>
+              {isActive && (
+                <span
+                  className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full"
+                  style={{ background: "var(--akp-gold)" }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Resources tab ── */}
+      {activeTab === "resources" && (
+        <ClassResourcesTab
+          initialResources={initialResources}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          courseLookup={courseLookup}
+        />
+      )}
+
+      {/* ── Reviews tab ── */}
+      {activeTab === "reviews" && <>
       {/* ── Controls ── */}
       <div className="flex flex-col gap-3 mb-8">
         {/* Row 1: Search + Write a Review */}
@@ -785,6 +834,7 @@ export default function ClassesClient({
       )}
 
       {showModal && <PostModal onClose={() => setShowModal(false)} />}
+      </>}
     </>
   );
 }

@@ -27,24 +27,12 @@ export const FOCUS_AREAS = {
     { code: "CLE-CAREER", label: "Career Exploration and Leadership" },
     { code: "CLE-CAMPUS", label: "Campus Life and Personal Well-Being" },
   ] as FocusArea[],
-  makingConnections: [
-    { code: "MC-EFC", label: "English and Communications" },
-    { code: "MC-FCA", label: "Aesthetic and Interpretive Approaches" },
-    { code: "MC-FCB", label: "Biological and Physical Science (w/ lab)" },
-    { code: "MC-FCC", label: "Social and Behavioral Sciences" },
-    { code: "MC-FCH", label: "Historical Analysis" },
-    { code: "MC-FCK", label: "Mathematical Sciences" },
-    { code: "MC-FCL", label: "Lifetime Fitness and Wellness" },
-    { code: "MC-NFL", label: "Foreign Language" },
-    { code: "MC-PH",  label: "Physical Education and Health" },
-  ] as FocusArea[],
 };
 
 export const ALL_FOCUS_AREAS: FocusArea[] = [
   ...FOCUS_AREAS.ideas,
   ...FOCUS_AREAS.foundations,
   ...FOCUS_AREAS.cle,
-  ...FOCUS_AREAS.makingConnections,
 ];
 
 export function getFocusAreaLabel(code: string): string {

@@ -357,6 +357,10 @@ function ResourceModal({
   );
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  const [subfolderId, setSubfolderId] = useState<string | null>(
+    resource?.subfolder_id ?? null
+  );
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -368,6 +372,7 @@ function ResourceModal({
   const isEditing = resource !== null;
 
   const selectedField = fields.find((f) => f.id === fieldId);
+  const subfolderOptions = selectedField?.recruitment_subfolders ?? [];
 
   async function uploadFile(file: File): Promise<string | null> {
     const ext = file.name.split(".").pop() ?? "";
@@ -412,6 +417,7 @@ function ResourceModal({
           }
           const result = await upsertResource({
             field_id: fieldId,
+            subfolder_id: subfolderId,
             title: file.name.replace(/\.[^.]+$/, ""),
             description: description || undefined,
             resource_type: "file",
@@ -460,6 +466,7 @@ function ResourceModal({
       const result = await upsertResource({
         id: resource?.id,
         field_id: fieldId,
+        subfolder_id: subfolderId,
         title: title || (selectedFiles[0]?.name.replace(/\.[^.]+$/, "") ?? ""),
         description: description || undefined,
         resource_type: "file",
@@ -483,6 +490,7 @@ function ResourceModal({
       const result = await upsertResource({
         id: resource?.id,
         field_id: fieldId,
+        subfolder_id: subfolderId,
         title,
         description: description || undefined,
         resource_type: "link",
@@ -528,7 +536,10 @@ function ResourceModal({
             <label className="input-label">Field *</label>
             <select
               value={fieldId}
-              onChange={(e) => setFieldId(e.target.value)}
+              onChange={(e) => {
+                setFieldId(e.target.value);
+                setSubfolderId(null);
+              }}
               className="input"
             >
               {fields.map((f) => (
@@ -538,6 +549,30 @@ function ResourceModal({
               ))}
             </select>
           </div>
+
+          {/* Subfolder selector */}
+          {subfolderOptions.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label className="input-label">
+                Subfolder{" "}
+                <span className="font-normal normal-case" style={{ color: "var(--t-muted)" }}>
+                  (optional)
+                </span>
+              </label>
+              <select
+                value={subfolderId ?? ""}
+                onChange={(e) => setSubfolderId(e.target.value || null)}
+                className="input"
+              >
+                <option value="">— No subfolder (top-level) —</option>
+                {subfolderOptions.map((sf) => (
+                  <option key={sf.id} value={sf.id}>
+                    📁 {sf.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Type toggle */}
           {!isEditing && (

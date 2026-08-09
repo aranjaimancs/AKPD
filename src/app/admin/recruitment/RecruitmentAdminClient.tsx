@@ -21,6 +21,7 @@ import type {
   SubfolderWithResources,
   FieldInput,
 } from "@/lib/actions/recruitment";
+import { buildSubfolderTree, type SubfolderNode } from "@/lib/subfolderTree";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -926,14 +927,17 @@ function SubfolderRow({
   resourceCount,
   isFirst,
   isLast,
+  childSortOrder,
 }: {
   subfolder: RecruitmentSubfolder;
   resourceCount: number;
   isFirst: boolean;
   isLast: boolean;
+  childSortOrder: number;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(subfolder.name);
+  const [showAddChild, setShowAddChild] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function saveRename() {
@@ -956,128 +960,199 @@ function SubfolderRow({
 
   return (
     <div
-      className="flex items-center gap-2 py-2 px-3 rounded-xl transition-opacity"
-      style={{
-        background: "var(--s-2)",
-        border: "1px solid var(--b-subtle)",
-        opacity: pending ? 0.5 : 1,
-      }}
+      className="flex flex-col gap-1 transition-opacity"
+      style={{ opacity: pending ? 0.5 : 1 }}
     >
-      <span className="text-sm shrink-0" style={{ color: "var(--t-muted)" }}>
-        📁
-      </span>
-
-      {renaming ? (
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") saveRename();
-            if (e.key === "Escape") {
-              setName(subfolder.name);
-              setRenaming(false);
-            }
-          }}
-          className="input flex-1 text-sm"
-          style={{ padding: "2px 8px", height: "auto" }}
-        />
-      ) : (
-        <span
-          className="flex-1 text-sm font-medium truncate"
-          style={{ color: "var(--t-primary)" }}
-        >
-          {subfolder.name}
-        </span>
-      )}
-
-      <span className="badge badge-neutral text-[10px] shrink-0">
-        {resourceCount}
-      </span>
-
-      {/* Reorder */}
-      <button
-        disabled={isFirst || pending}
-        onClick={() =>
-          startTransition(async () => {
-            await moveSubfolder(subfolder.id, "up");
-          })
-        }
-        className="w-5 h-5 flex items-center justify-center text-xs disabled:opacity-20 transition-colors rounded"
-        style={{ color: "var(--t-muted)" }}
-        title="Move up"
-      >
-        ↑
-      </button>
-      <button
-        disabled={isLast || pending}
-        onClick={() =>
-          startTransition(async () => {
-            await moveSubfolder(subfolder.id, "down");
-          })
-        }
-        className="w-5 h-5 flex items-center justify-center text-xs disabled:opacity-20 transition-colors rounded"
-        style={{ color: "var(--t-muted)" }}
-        title="Move down"
-      >
-        ↓
-      </button>
-
-      {renaming ? (
-        <>
-          <button
-            onClick={saveRename}
-            disabled={pending}
-            className="btn btn-primary btn-sm disabled:opacity-50"
-            style={{ padding: "2px 10px" }}
-          >
-            Save
-          </button>
-          <button
-            onClick={() => {
-              setName(subfolder.name);
-              setRenaming(false);
-            }}
-            className="btn btn-ghost btn-sm"
-            style={{ padding: "2px 10px" }}
-          >
-            Cancel
-          </button>
-        </>
-      ) : (
-        <button
-          onClick={() => setRenaming(true)}
-          className="btn btn-ghost btn-sm"
-        >
-          Rename
-        </button>
-      )}
-
-      <button
-        disabled={pending}
-        onClick={() => {
-          if (
-            !confirm(
-              `Delete "${subfolder.name}"? Its resources won't be deleted — they'll appear as top-level.`
-            )
-          )
-            return;
-          startTransition(async () => {
-            await deleteSubfolder(subfolder.id);
-          });
+      {/* Row */}
+      <div
+        className="flex items-center gap-2 py-2 px-3 rounded-xl"
+        style={{
+          background: "var(--s-2)",
+          border: "1px solid var(--b-subtle)",
         }}
-        className="text-xs font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-30 shrink-0"
-        style={{ color: "#dc2626" }}
       >
-        Delete
-      </button>
+        <span className="text-sm shrink-0" style={{ color: "var(--t-muted)" }}>
+          📁
+        </span>
+
+        {renaming ? (
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveRename();
+              if (e.key === "Escape") {
+                setName(subfolder.name);
+                setRenaming(false);
+              }
+            }}
+            className="input flex-1 text-sm"
+            style={{ padding: "2px 8px", height: "auto" }}
+          />
+        ) : (
+          <span
+            className="flex-1 text-sm font-medium truncate"
+            style={{ color: "var(--t-primary)" }}
+          >
+            {subfolder.name}
+          </span>
+        )}
+
+        <span className="badge badge-neutral text-[10px] shrink-0">
+          {resourceCount}
+        </span>
+
+        <button
+          disabled={isFirst || pending}
+          onClick={() =>
+            startTransition(async () => {
+              await moveSubfolder(subfolder.id, "up");
+            })
+          }
+          className="w-5 h-5 flex items-center justify-center text-xs disabled:opacity-20 transition-colors rounded"
+          style={{ color: "var(--t-muted)" }}
+          title="Move up"
+        >
+          ↑
+        </button>
+        <button
+          disabled={isLast || pending}
+          onClick={() =>
+            startTransition(async () => {
+              await moveSubfolder(subfolder.id, "down");
+            })
+          }
+          className="w-5 h-5 flex items-center justify-center text-xs disabled:opacity-20 transition-colors rounded"
+          style={{ color: "var(--t-muted)" }}
+          title="Move down"
+        >
+          ↓
+        </button>
+
+        {renaming ? (
+          <>
+            <button
+              onClick={saveRename}
+              disabled={pending}
+              className="btn btn-primary btn-sm disabled:opacity-50"
+              style={{ padding: "2px 10px" }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setName(subfolder.name);
+                setRenaming(false);
+              }}
+              className="btn btn-ghost btn-sm"
+              style={{ padding: "2px 10px" }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => setRenaming(true)}
+              className="btn btn-ghost btn-sm"
+            >
+              Rename
+            </button>
+            <button
+              onClick={() => setShowAddChild((v) => !v)}
+              className="btn btn-ghost btn-sm"
+              title="Add a sub-folder inside this folder"
+            >
+              + Sub-folder
+            </button>
+          </>
+        )}
+
+        <button
+          disabled={pending}
+          onClick={() => {
+            if (
+              !confirm(
+                `Delete "${subfolder.name}"? Its resources won't be deleted — they'll appear as top-level.`
+              )
+            )
+              return;
+            startTransition(async () => {
+              await deleteSubfolder(subfolder.id);
+            });
+          }}
+          className="text-xs font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-30 shrink-0"
+          style={{ color: "#dc2626" }}
+        >
+          Delete
+        </button>
+      </div>
+
+      {/* Inline add-child form */}
+      {showAddChild && (
+        <div className="pl-6">
+          <AddSubfolderForm
+            fieldId={subfolder.field_id}
+            parentId={subfolder.id}
+            nextSortOrder={childSortOrder}
+            onDone={() => setShowAddChild(false)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Subfolder tree (admin) ────────────────────────────────────────────────────
+
+function SubfolderTreeAdmin({
+  nodes,
+  depth = 0,
+}: {
+  nodes: SubfolderNode[];
+  depth?: number;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-2"
+      style={{ paddingLeft: depth > 0 ? "1.5rem" : "0" }}
+    >
+      {nodes.map((node, i) => (
+        <div key={node.id}>
+          <SubfolderRow
+            subfolder={node}
+            resourceCount={node.recruitment_resources?.length ?? 0}
+            isFirst={i === 0}
+            isLast={i === nodes.length - 1}
+            childSortOrder={
+              node.children.length > 0
+                ? Math.max(...node.children.map((c) => c.sort_order)) + 10
+                : 10
+            }
+          />
+          {node.children.length > 0 && (
+            <SubfolderTreeAdmin nodes={node.children} depth={depth + 1} />
+          )}
+        </div>
+      ))}
     </div>
   );
 }
 
 // ── Add subfolder inline form ─────────────────────────────────────────────────
 
-function AddSubfolderForm({ fieldId, nextSortOrder }: { fieldId: string; nextSortOrder: number }) {
+function AddSubfolderForm({
+  fieldId,
+  parentId = null,
+  nextSortOrder,
+  onDone,
+}: {
+  fieldId: string;
+  parentId?: string | null;
+  nextSortOrder: number;
+  onDone?: () => void;
+}) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -1089,6 +1164,7 @@ function AddSubfolderForm({ fieldId, nextSortOrder }: { fieldId: string; nextSor
     startTransition(async () => {
       const result = await upsertSubfolder({
         field_id: fieldId,
+        parent_id: parentId,
         name: trimmed,
         sort_order: nextSortOrder,
       });
@@ -1096,6 +1172,7 @@ function AddSubfolderForm({ fieldId, nextSortOrder }: { fieldId: string; nextSor
         setError(result.error);
       } else {
         setName("");
+        onDone?.();
       }
     });
   }
@@ -1109,7 +1186,9 @@ function AddSubfolderForm({ fieldId, nextSortOrder }: { fieldId: string; nextSor
           onKeyDown={(e) => {
             if (e.key === "Enter") submit();
           }}
-          placeholder="New subfolder name…"
+          placeholder={
+            parentId ? "New sub-folder name…" : "New subfolder name…"
+          }
           className="input flex-1 text-sm"
         />
         <button
@@ -1132,26 +1211,57 @@ function AddSubfolderForm({ fieldId, nextSortOrder }: { fieldId: string; nextSor
 // ── Folder upload modal ───────────────────────────────────────────────────────
 
 type FolderGroup = {
-  subfolderName: string | null; // null = top-level
+  subfolderName: string | null;       // null = top-level file
+  parentSubfolderName: string | null; // null = root subfolder
   files: File[];
 };
 
 function groupFilesBySubfolder(files: FileList): FolderGroup[] {
-  const map = new Map<string | null, File[]>();
+  const map = new Map<string, FolderGroup>();
+
   for (const file of Array.from(files)) {
     const parts = file.webkitRelativePath.split("/");
-    // parts[0] = root folder, parts[1] = subfolder OR filename
-    const key = parts.length > 2 ? parts[1] : null;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(file);
+    // parts[0] = root folder (the selected folder itself)
+    // depth 2: parts = [root, filename]           → top-level
+    // depth 3: parts = [root, sub, filename]      → one subfolder
+    // depth 4: parts = [root, sub, subsub, file]  → nested subfolder
+
+    let key: string;
+    let subfolderName: string | null;
+    let parentSubfolderName: string | null;
+
+    if (parts.length <= 2) {
+      key = "__root__";
+      subfolderName = null;
+      parentSubfolderName = null;
+    } else if (parts.length === 3) {
+      key = parts[1];
+      subfolderName = parts[1];
+      parentSubfolderName = null;
+    } else {
+      // depth >= 4: use first two levels only (cap at two levels)
+      key = `${parts[1]}/${parts[2]}`;
+      subfolderName = parts[2];
+      parentSubfolderName = parts[1];
+    }
+
+    if (!map.has(key)) {
+      map.set(key, { subfolderName, parentSubfolderName, files: [] });
+    }
+    map.get(key)!.files.push(file);
   }
-  // Convert to sorted array: named groups first (alphabetically), then top-level
-  const named = Array.from(map.entries())
-    .filter(([k]) => k !== null)
-    .sort((a, b) => a[0]!.localeCompare(b[0]!))
-    .map(([k, v]) => ({ subfolderName: k, files: v }));
-  const topLevel = map.has(null) ? [{ subfolderName: null, files: map.get(null)! }] : [];
-  return [...named, ...topLevel];
+
+  // Order: top-level files first, root subfolders next, nested last (alphabetical within each tier)
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.subfolderName === null) return -1;
+    if (b.subfolderName === null) return 1;
+    if (a.parentSubfolderName === null && b.parentSubfolderName !== null) return -1;
+    if (a.parentSubfolderName !== null && b.parentSubfolderName === null) return 1;
+    return (
+      (a.parentSubfolderName ?? "").localeCompare(b.parentSubfolderName ?? "") ||
+      a.subfolderName.localeCompare(b.subfolderName)
+    );
+  });
 }
 
 function FolderUploadModal({
@@ -1185,72 +1295,107 @@ function FolderUploadModal({
     const total = groups.reduce((n, g) => n + g.files.length, 0);
     setProgress({ done: 0, total });
 
-    // Build subfolder id map from existing subfolders
+    // Seed map with existing subfolders (case-insensitive key = "name" or "parentname/name")
     const subfolderIdMap = new Map<string, string>();
     for (const sf of field.recruitment_subfolders ?? []) {
       subfolderIdMap.set(sf.name.toLowerCase(), sf.id);
+      // Also index nested ones by parent/child key if we ever see them
     }
 
-    let nextOrder =
-      (field.recruitment_subfolders ?? []).length > 0
-        ? Math.max(...(field.recruitment_subfolders ?? []).map((s) => s.sort_order)) + 10
+    let nextRootOrder =
+      (field.recruitment_subfolders ?? []).filter((s) => !s.parent_id).length > 0
+        ? Math.max(
+            ...(field.recruitment_subfolders ?? [])
+              .filter((s) => !s.parent_id)
+              .map((s) => s.sort_order)
+          ) + 10
         : 10;
+    let nextChildOrder = 10;
 
     let done = 0;
 
     for (const group of groups) {
       let subfolderId: string | null = null;
 
-      // Upsert subfolder row if named
       if (group.subfolderName !== null) {
-        const existingId = subfolderIdMap.get(group.subfolderName.toLowerCase());
-        if (existingId) {
-          subfolderId = existingId;
-        } else {
-          const result = await upsertSubfolder({
-            field_id: field.id,
-            name: group.subfolderName,
-            sort_order: nextOrder,
-          });
-          if (result.error) {
-            setErrorMsg(`Failed to create subfolder "${group.subfolderName}": ${result.error}`);
-            setPhase("error");
-            return;
+        if (group.parentSubfolderName !== null) {
+          // Nested subfolder — ensure root exists first
+          const rootKey = group.parentSubfolderName.toLowerCase();
+          let rootId = subfolderIdMap.get(rootKey);
+          if (!rootId) {
+            const r = await upsertSubfolder({
+              field_id: field.id,
+              parent_id: null,
+              name: group.parentSubfolderName,
+              sort_order: nextRootOrder,
+            });
+            if (r.error) { setErrorMsg(`Failed to create folder "${group.parentSubfolderName}": ${r.error}`); setPhase("error"); return; }
+            rootId = r.id!;
+            subfolderIdMap.set(rootKey, rootId);
+            nextRootOrder += 10;
           }
-          subfolderId = result.id!;
-          subfolderIdMap.set(group.subfolderName.toLowerCase(), subfolderId);
-          nextOrder += 10;
+
+          // Now upsert the child subfolder
+          const childKey = `${rootKey}/${group.subfolderName.toLowerCase()}`;
+          let childId = subfolderIdMap.get(childKey);
+          if (!childId) {
+            const r = await upsertSubfolder({
+              field_id: field.id,
+              parent_id: rootId,
+              name: group.subfolderName,
+              sort_order: nextChildOrder,
+            });
+            if (r.error) { setErrorMsg(`Failed to create folder "${group.subfolderName}": ${r.error}`); setPhase("error"); return; }
+            childId = r.id!;
+            subfolderIdMap.set(childKey, childId);
+            nextChildOrder += 10;
+          }
+          subfolderId = childId;
+        } else {
+          // Root subfolder
+          const rootKey = group.subfolderName.toLowerCase();
+          let rootId = subfolderIdMap.get(rootKey);
+          if (!rootId) {
+            const r = await upsertSubfolder({
+              field_id: field.id,
+              parent_id: null,
+              name: group.subfolderName,
+              sort_order: nextRootOrder,
+            });
+            if (r.error) { setErrorMsg(`Failed to create folder "${group.subfolderName}": ${r.error}`); setPhase("error"); return; }
+            rootId = r.id!;
+            subfolderIdMap.set(rootKey, rootId);
+            nextRootOrder += 10;
+          }
+          subfolderId = rootId;
         }
       }
 
-      // Upload each file in the group
+      // Upload files in this group
       for (const file of group.files) {
         const ext = file.name.split(".").pop() ?? "";
         const base = safeName(file.name.replace(/\.[^.]+$/, ""));
         const subfolderSlug = group.subfolderName
           ? group.subfolderName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
           : null;
+        const parentSlug = group.parentSubfolderName
+          ? group.parentSubfolderName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+          : null;
         const storagePath = subfolderSlug
-          ? `${field.slug}/${subfolderSlug}/${Date.now()}-${base}${ext ? "." + ext : ""}`
+          ? parentSlug
+            ? `${field.slug}/${parentSlug}/${subfolderSlug}/${Date.now()}-${base}${ext ? "." + ext : ""}`
+            : `${field.slug}/${subfolderSlug}/${Date.now()}-${base}${ext ? "." + ext : ""}`
           : `${field.slug}/${Date.now()}-${base}${ext ? "." + ext : ""}`;
 
         const urlResult = await getSignedUploadUrl(storagePath);
-        if ("error" in urlResult) {
-          setErrorMsg(`Upload failed for "${file.name}": ${urlResult.error}`);
-          setPhase("error");
-          return;
-        }
+        if ("error" in urlResult) { setErrorMsg(`Upload failed for "${file.name}": ${urlResult.error}`); setPhase("error"); return; }
 
         const res = await fetch(urlResult.signedUrl, {
           method: "PUT",
           headers: { "Content-Type": file.type || "application/octet-stream" },
           body: file,
         });
-        if (!res.ok) {
-          setErrorMsg(`Upload failed for "${file.name}": ${res.statusText}`);
-          setPhase("error");
-          return;
-        }
+        if (!res.ok) { setErrorMsg(`Upload failed for "${file.name}": ${res.statusText}`); setPhase("error"); return; }
 
         const saveResult = await upsertResource({
           field_id: field.id,
@@ -1260,11 +1405,7 @@ function FolderUploadModal({
           file_path: storagePath,
           file_mime: file.type || null,
         });
-        if (saveResult.error) {
-          setErrorMsg(`Failed to save "${file.name}": ${saveResult.error}`);
-          setPhase("error");
-          return;
-        }
+        if (saveResult.error) { setErrorMsg(`Failed to save "${file.name}": ${saveResult.error}`); setPhase("error"); return; }
 
         done++;
         setProgress({ done, total });
@@ -1350,11 +1491,22 @@ function FolderUploadModal({
                 style={{ background: "var(--s-1)", border: "1px solid var(--b-default)" }}
               >
                 {groups.map((g) => (
-                  <div key={g.subfolderName ?? "__top__"} className="flex items-center gap-3">
+                  <div
+                    key={g.subfolderName ?? "__top__"}
+                    className="flex items-center gap-3"
+                    style={{ paddingLeft: g.parentSubfolderName ? "1.25rem" : "0" }}
+                  >
                     <span className="text-sm" style={{ color: "var(--t-muted)" }}>
-                      {g.subfolderName ? "📁" : "📄"}
+                      {g.subfolderName
+                        ? g.parentSubfolderName
+                          ? "  📂"
+                          : "📁"
+                        : "📄"}
                     </span>
-                    <span className="text-sm flex-1" style={{ color: "var(--t-primary)" }}>
+                    <span
+                      className="text-sm flex-1"
+                      style={{ color: "var(--t-primary)" }}
+                    >
                       {g.subfolderName ?? "(top-level files)"}
                     </span>
                     <span className="badge badge-neutral text-[11px]">
@@ -1628,21 +1780,21 @@ function FieldCard({
                   No subfolders yet — add one to group resources.
                 </p>
               ) : (
-                (field.recruitment_subfolders ?? []).map((sf, i, arr) => (
-                  <SubfolderRow
-                    key={sf.id}
-                    subfolder={sf}
-                    resourceCount={sf.recruitment_resources?.length ?? 0}
-                    isFirst={i === 0}
-                    isLast={i === arr.length - 1}
-                  />
-                ))
+                <SubfolderTreeAdmin
+                  nodes={buildSubfolderTree(field.recruitment_subfolders ?? [])}
+                />
               )}
               <AddSubfolderForm
                 fieldId={field.id}
+                parentId={null}
                 nextSortOrder={
-                  (field.recruitment_subfolders ?? []).length > 0
-                    ? Math.max(...(field.recruitment_subfolders ?? []).map((s) => s.sort_order)) + 10
+                  (field.recruitment_subfolders ?? []).filter((s) => !s.parent_id)
+                    .length > 0
+                    ? Math.max(
+                        ...(field.recruitment_subfolders ?? [])
+                          .filter((s) => !s.parent_id)
+                          .map((s) => s.sort_order)
+                      ) + 10
                     : 10
                 }
               />

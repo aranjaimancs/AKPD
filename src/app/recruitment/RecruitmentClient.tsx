@@ -205,7 +205,7 @@ export default function RecruitmentClient({
   fields: FieldWithResources[];
   isAdmin: boolean;
 }) {
-  const [openFieldId, setOpenFieldId] = useState<string | null>(null);
+  const [openFieldId, setOpenFieldId] = useState<string | null>(fields[0]?.id ?? null);
 
   // If the page was linked to with a hash (e.g. from the quick-jump pills),
   // open that field on mount or whenever the hash changes.

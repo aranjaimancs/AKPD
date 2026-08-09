@@ -1094,6 +1094,308 @@ function AddSubfolderForm({ fieldId, nextSortOrder }: { fieldId: string; nextSor
   );
 }
 
+// ── Folder upload modal ───────────────────────────────────────────────────────
+
+type FolderGroup = {
+  subfolderName: string | null; // null = top-level
+  files: File[];
+};
+
+function groupFilesBySubfolder(files: FileList): FolderGroup[] {
+  const map = new Map<string | null, File[]>();
+  for (const file of Array.from(files)) {
+    const parts = file.webkitRelativePath.split("/");
+    // parts[0] = root folder, parts[1] = subfolder OR filename
+    const key = parts.length > 2 ? parts[1] : null;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(file);
+  }
+  // Convert to sorted array: named groups first (alphabetically), then top-level
+  const named = Array.from(map.entries())
+    .filter(([k]) => k !== null)
+    .sort((a, b) => a[0]!.localeCompare(b[0]!))
+    .map(([k, v]) => ({ subfolderName: k, files: v }));
+  const topLevel = map.has(null) ? [{ subfolderName: null, files: map.get(null)! }] : [];
+  return [...named, ...topLevel];
+}
+
+function FolderUploadModal({
+  field,
+  onClose,
+}: {
+  field: FieldWithResources;
+  onClose: () => void;
+}) {
+  const [groups, setGroups] = useState<FolderGroup[]>([]);
+  const [phase, setPhase] = useState<"pick" | "preview" | "uploading" | "done" | "error">("pick");
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [errorMsg, setErrorMsg] = useState("");
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  function onFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setGroups(groupFilesBySubfolder(files));
+    setPhase("preview");
+  }
+
+  async function startUpload() {
+    setPhase("uploading");
+    const total = groups.reduce((n, g) => n + g.files.length, 0);
+    setProgress({ done: 0, total });
+
+    // Build subfolder id map from existing subfolders
+    const subfolderIdMap = new Map<string, string>();
+    for (const sf of field.recruitment_subfolders ?? []) {
+      subfolderIdMap.set(sf.name.toLowerCase(), sf.id);
+    }
+
+    let nextOrder =
+      (field.recruitment_subfolders ?? []).length > 0
+        ? Math.max(...(field.recruitment_subfolders ?? []).map((s) => s.sort_order)) + 10
+        : 10;
+
+    let done = 0;
+
+    for (const group of groups) {
+      let subfolderId: string | null = null;
+
+      // Upsert subfolder row if named
+      if (group.subfolderName !== null) {
+        const existingId = subfolderIdMap.get(group.subfolderName.toLowerCase());
+        if (existingId) {
+          subfolderId = existingId;
+        } else {
+          const result = await upsertSubfolder({
+            field_id: field.id,
+            name: group.subfolderName,
+            sort_order: nextOrder,
+          });
+          if (result.error) {
+            setErrorMsg(`Failed to create subfolder "${group.subfolderName}": ${result.error}`);
+            setPhase("error");
+            return;
+          }
+          subfolderId = result.id!;
+          subfolderIdMap.set(group.subfolderName.toLowerCase(), subfolderId);
+          nextOrder += 10;
+        }
+      }
+
+      // Upload each file in the group
+      for (const file of group.files) {
+        const ext = file.name.split(".").pop() ?? "";
+        const base = safeName(file.name.replace(/\.[^.]+$/, ""));
+        const subfolderSlug = group.subfolderName
+          ? group.subfolderName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+          : null;
+        const storagePath = subfolderSlug
+          ? `${field.slug}/${subfolderSlug}/${Date.now()}-${base}${ext ? "." + ext : ""}`
+          : `${field.slug}/${Date.now()}-${base}${ext ? "." + ext : ""}`;
+
+        const urlResult = await getSignedUploadUrl(storagePath);
+        if ("error" in urlResult) {
+          setErrorMsg(`Upload failed for "${file.name}": ${urlResult.error}`);
+          setPhase("error");
+          return;
+        }
+
+        const res = await fetch(urlResult.signedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        if (!res.ok) {
+          setErrorMsg(`Upload failed for "${file.name}": ${res.statusText}`);
+          setPhase("error");
+          return;
+        }
+
+        const saveResult = await upsertResource({
+          field_id: field.id,
+          subfolder_id: subfolderId,
+          title: file.name.replace(/\.[^.]+$/, ""),
+          resource_type: "file",
+          file_path: storagePath,
+          file_mime: file.type || null,
+        });
+        if (saveResult.error) {
+          setErrorMsg(`Failed to save "${file.name}": ${saveResult.error}`);
+          setPhase("error");
+          return;
+        }
+
+        done++;
+        setProgress({ done, total });
+      }
+    }
+
+    setPhase("done");
+    setTimeout(onClose, 1000);
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
+      style={{ background: "rgba(20,18,16,0.5)", backdropFilter: "blur(4px)" }}
+      onPointerDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div
+        className="w-full max-w-lg my-8 rounded-2xl flex flex-col animate-scale-in"
+        style={{ background: "var(--s-0)", border: "1px solid var(--b-default)", boxShadow: "var(--shadow-xl)" }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-6 py-5"
+          style={{ borderBottom: "1px solid var(--b-subtle)" }}
+        >
+          <h2
+            className="text-[16px] font-bold"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
+          >
+            Upload Folder — {field.name}
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ color: "var(--t-muted)" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--s-1)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-6">
+          {phase === "pick" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm" style={{ color: "var(--t-secondary)" }}>
+                Select a folder from your computer. Sub-folders inside it become subfolder sections.
+                Files at the root become top-level resources.
+              </p>
+              <label
+                className="flex flex-col items-center justify-center gap-3 px-4 py-10 rounded-xl cursor-pointer border-2 border-dashed transition-colors"
+                style={{ borderColor: "var(--b-default)" }}
+              >
+                <input
+                  type="file"
+                  className="sr-only"
+                  // @ts-expect-error — webkitdirectory is non-standard but widely supported
+                  webkitdirectory=""
+                  multiple
+                  onChange={onFilesSelected}
+                />
+                <svg width="28" height="28" fill="none" stroke="var(--t-muted)" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                </svg>
+                <p className="text-sm font-semibold" style={{ color: "var(--t-primary)" }}>
+                  Click to select a folder
+                </p>
+                <p className="text-xs" style={{ color: "var(--t-muted)" }}>
+                  Sub-folders are detected automatically
+                </p>
+              </label>
+            </div>
+          )}
+
+          {phase === "preview" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm font-semibold" style={{ color: "var(--t-primary)" }}>
+                Detected structure:
+              </p>
+              <div
+                className="rounded-xl p-4 flex flex-col gap-2"
+                style={{ background: "var(--s-1)", border: "1px solid var(--b-default)" }}
+              >
+                {groups.map((g) => (
+                  <div key={g.subfolderName ?? "__top__"} className="flex items-center gap-3">
+                    <span className="text-sm" style={{ color: "var(--t-muted)" }}>
+                      {g.subfolderName ? "📁" : "📄"}
+                    </span>
+                    <span className="text-sm flex-1" style={{ color: "var(--t-primary)" }}>
+                      {g.subfolderName ?? "(top-level files)"}
+                    </span>
+                    <span className="badge badge-neutral text-[11px]">
+                      {g.files.length} file{g.files.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs" style={{ color: "var(--t-muted)" }}>
+                {groups.reduce((n, g) => n + g.files.length, 0)} files total
+              </p>
+              <div className="flex justify-end gap-2 pt-2" style={{ borderTop: "1px solid var(--b-subtle)" }}>
+                <button onClick={() => setPhase("pick")} className="btn btn-ghost btn-sm">
+                  Back
+                </button>
+                <button onClick={startUpload} className="btn btn-primary btn-sm">
+                  Upload All
+                </button>
+              </div>
+            </div>
+          )}
+
+          {phase === "uploading" && (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <span
+                className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+                style={{ borderColor: "var(--akp-navy)", borderTopColor: "transparent" }}
+              />
+              <p className="text-sm font-semibold" style={{ color: "var(--t-primary)" }}>
+                Uploading {progress.done} of {progress.total} files…
+              </p>
+              <div className="w-full rounded-full h-1.5" style={{ background: "var(--b-default)" }}>
+                <div
+                  className="h-1.5 rounded-full transition-all"
+                  style={{
+                    background: "var(--akp-gold)",
+                    width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {phase === "done" && (
+            <div className="flex flex-col items-center gap-3 py-10">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
+                style={{ background: "rgba(201,168,76,0.15)", color: "var(--akp-gold)" }}
+              >
+                ✓
+              </div>
+              <p className="font-semibold" style={{ color: "var(--t-primary)" }}>
+                {progress.total} file{progress.total !== 1 ? "s" : ""} uploaded.
+              </p>
+            </div>
+          )}
+
+          {phase === "error" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm" style={{ color: "#dc2626" }}>
+                {errorMsg}
+              </p>
+              <p className="text-xs" style={{ color: "var(--t-muted)" }}>
+                Files uploaded before the error were saved. You can retry the remaining files manually.
+              </p>
+              <div className="flex justify-end">
+                <button onClick={onClose} className="btn btn-ghost btn-sm">Close</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Field card ────────────────────────────────────────────────────────────────
 
 function FieldCard({
@@ -1114,6 +1416,7 @@ function FieldCard({
   const [expanded, setExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
   const [editingResource, setEditingResource] = useState<RecruitmentResource | null>(null);
+  const [showFolderUpload, setShowFolderUpload] = useState(false);
 
   const resources = field.recruitment_resources ?? [];
 
@@ -1169,6 +1472,15 @@ function FieldCard({
         >
           {resources.length} resource{resources.length !== 1 ? "s" : ""}{" "}
           {expanded ? "▲" : "▼"}
+        </button>
+
+        {/* Upload Folder */}
+        <button
+          onClick={() => setShowFolderUpload(true)}
+          title="Upload a folder"
+          className="shrink-0 btn btn-ghost btn-sm"
+        >
+          📁 Upload Folder
         </button>
 
         {/* Reorder */}
@@ -1352,6 +1664,13 @@ function FieldCard({
           resource={editingResource}
           defaultFieldId={field.id}
           onClose={() => setEditingResource(null)}
+        />
+      )}
+
+      {showFolderUpload && (
+        <FolderUploadModal
+          field={field}
+          onClose={() => setShowFolderUpload(false)}
         />
       )}
     </div>

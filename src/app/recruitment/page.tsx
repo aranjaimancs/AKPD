@@ -1,246 +1,13 @@
-import { requireMember, getCurrentMember } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { FieldWithResources, RecruitmentResource } from "@/lib/actions/recruitment";
-import DownloadButton from "./DownloadButton";
+import type { FieldWithResources } from "@/lib/actions/recruitment";
+import RecruitmentClient from "./RecruitmentClient";
 
 export const dynamic = "force-dynamic";
 
-function mimeLabel(mime: string | null): string {
-  if (!mime) return "File";
-  if (mime.includes("pdf")) return "PDF";
-  if (mime.includes("word") || mime.includes("document")) return "Word";
-  if (mime.includes("presentation") || mime.includes("powerpoint")) return "Slides";
-  if (mime.includes("sheet") || mime.includes("excel")) return "Excel";
-  return "File";
-}
-
-function mimeDot(mime: string | null): string {
-  if (!mime) return "#8a8278";
-  if (mime.includes("pdf")) return "#e53e3e";
-  if (mime.includes("word") || mime.includes("document")) return "#3182ce";
-  if (mime.includes("presentation") || mime.includes("powerpoint")) return "#dd6b20";
-  if (mime.includes("sheet") || mime.includes("excel")) return "#38a169";
-  return "#8a8278";
-}
-
-function ResourceCard({ resource }: { resource: RecruitmentResource }) {
-  const isFile = resource.resource_type === "file";
-  const dot = isFile ? mimeDot(resource.file_mime) : "#c9a84c";
-  const label = isFile ? mimeLabel(resource.file_mime) : "Link";
-
-  return (
-    <div className="card card-interactive p-4 flex flex-col gap-3 h-full">
-      {/* Badge row */}
-      <div className="flex items-center gap-1.5">
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ background: dot }}
-        />
-        <span
-          className="text-[10px] font-bold uppercase tracking-[0.1em]"
-          style={{ color: "var(--t-muted)" }}
-        >
-          {label}
-        </span>
-      </div>
-
-      {/* Title */}
-      <p
-        className="text-[13px] font-semibold leading-snug flex-1"
-        style={{ color: "var(--t-primary)" }}
-      >
-        {resource.title}
-      </p>
-
-      {/* Description */}
-      {resource.description && (
-        <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-secondary)" }}>
-          {resource.description}
-        </p>
-      )}
-
-      {/* Action */}
-      <div className="mt-auto pt-2" style={{ borderTop: "1px solid var(--b-subtle)" }}>
-        {isFile && resource.file_path ? (
-          <DownloadButton
-            filePath={resource.file_path}
-            title={resource.title}
-            mime={resource.file_mime}
-          />
-        ) : resource.external_url ? (
-          <a
-            href={resource.external_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-ghost btn-sm w-full justify-center"
-          >
-            <svg
-              width="12"
-              height="12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              viewBox="0 0 24 24"
-              className="shrink-0"
-            >
-              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="10" y1="14" x2="21" y2="3" />
-            </svg>
-            Open link
-          </a>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function FieldSection({
-  field,
-  isAdmin,
-}: {
-  field: FieldWithResources;
-  isAdmin: boolean;
-}) {
-  const subfolders = (field.recruitment_subfolders ?? []).sort(
-    (a, b) => a.sort_order - b.sort_order
-  );
-  const topLevelResources = (field.recruitment_resources ?? []).filter(
-    (r) => r.subfolder_id === null
-  );
-  const hasContent = subfolders.length > 0 || topLevelResources.length > 0;
-
-  const totalCount = subfolders.reduce(
-    (n, sf) => n + (sf.recruitment_resources?.length ?? 0),
-    topLevelResources.length
-  );
-
-  return (
-    <section id={field.slug} className="scroll-mt-20">
-      {/* Field header */}
-      <div className="flex items-start justify-between gap-4 mb-5">
-        <div className="flex items-center gap-3">
-          {field.icon && (
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0"
-              style={{ background: "var(--s-1)", border: "1px solid var(--b-default)" }}
-              aria-hidden
-            >
-              {field.icon}
-            </div>
-          )}
-          <div>
-            <h2
-              className="text-base font-bold"
-              style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
-            >
-              {field.name}
-            </h2>
-            {field.description && (
-              <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>
-                {field.description}
-              </p>
-            )}
-          </div>
-        </div>
-        <span className={`badge shrink-0 ${hasContent ? "badge-navy" : "badge-neutral"}`}>
-          {hasContent
-            ? subfolders.length > 0
-              ? `${subfolders.length} folder${subfolders.length !== 1 ? "s" : ""} · ${totalCount} resource${totalCount !== 1 ? "s" : ""}`
-              : `${totalCount} resource${totalCount !== 1 ? "s" : ""}`
-            : "Coming soon"}
-        </span>
-      </div>
-
-      {/* Content */}
-      {!hasContent ? (
-        <div
-          className="rounded-xl px-6 py-7 text-center text-[13px]"
-          style={{
-            background: "var(--s-1)",
-            border: "1px dashed var(--b-default)",
-            color: "var(--t-muted)",
-          }}
-        >
-          Resources for this track are being added.
-          {isAdmin && (
-            <>
-              {" "}
-              <a
-                href="/admin/recruitment"
-                style={{ color: "var(--akp-gold)", fontWeight: 600 }}
-              >
-                Add the first one →
-              </a>
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {/* Subfolder accordions */}
-          {subfolders.map((sf, idx) => (
-            <details key={sf.id} {...(idx === 0 ? { open: true } : {})}>
-              <summary
-                className="flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer list-none select-none transition-colors"
-                style={{
-                  background: "var(--s-1)",
-                  border: "1px solid var(--b-default)",
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm" style={{ color: "var(--t-muted)" }}>
-                    📁
-                  </span>
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color: "var(--t-primary)" }}
-                  >
-                    {sf.name}
-                  </span>
-                </div>
-                <span className="badge badge-neutral text-[11px]">
-                  {sf.recruitment_resources?.length ?? 0}
-                </span>
-              </summary>
-              <div className="pt-3 pb-1 px-1">
-                {(sf.recruitment_resources ?? []).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {(sf.recruitment_resources ?? []).map((r) => (
-                      <ResourceCard key={r.id} resource={r} />
-                    ))}
-                  </div>
-                ) : (
-                  <p
-                    className="text-[13px] text-center py-4"
-                    style={{ color: "var(--t-muted)" }}
-                  >
-                    No resources in this folder yet.
-                  </p>
-                )}
-              </div>
-            </details>
-          ))}
-
-          {/* Top-level resources (no subfolder) */}
-          {topLevelResources.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
-              {topLevelResources.map((r) => (
-                <ResourceCard key={r.id} resource={r} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
 export default async function RecruitmentPage() {
   const member = await requireMember();
-  // Alumni don't need recruiting resources — send them to opportunities instead
   if (member.role === "alumni") redirect("/opportunities");
   const isAdmin = member.role === "admin";
 
@@ -248,17 +15,17 @@ export default async function RecruitmentPage() {
     .from("recruitment_fields")
     .select(
       `*,
-     recruitment_subfolders (
-       id, field_id, parent_id, name, sort_order,
+       recruitment_subfolders (
+         id, field_id, parent_id, name, sort_order,
+         recruitment_resources (
+           id, field_id, subfolder_id, title, description, resource_type,
+           file_path, file_mime, external_url, sort_order
+         )
+       ),
        recruitment_resources (
          id, field_id, subfolder_id, title, description, resource_type,
          file_path, file_mime, external_url, sort_order
-       )
-     ),
-     recruitment_resources (
-       id, field_id, subfolder_id, title, description, resource_type,
-       file_path, file_mime, external_url, sort_order
-     )`
+       )`
     )
     .eq("is_published", true)
     .order("sort_order")
@@ -275,15 +42,23 @@ export default async function RecruitmentPage() {
   return (
     <main className="flex-1">
       {/* ── Title bar ── */}
-      <div style={{ background: "var(--s-0)", borderBottom: "1px solid var(--b-default)" }}>
+      <div
+        style={{
+          background: "var(--s-0)",
+          borderBottom: "1px solid var(--b-default)",
+        }}
+      >
         <div className="max-w-6xl mx-auto px-6 pt-4 pb-3">
           <h1
             className="text-[17px] font-bold mb-3"
-            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)", letterSpacing: "-0.01em" }}
+            style={{
+              color: "var(--t-primary)",
+              fontFamily: "var(--font-display)",
+              letterSpacing: "-0.01em",
+            }}
           >
             Recruiting Resources
           </h1>
-          {/* Field quick-jump */}
           {fieldsWithContent.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {fieldsWithContent.map((f) => (
@@ -298,34 +73,30 @@ export default async function RecruitmentPage() {
       </div>
 
       {/* ── Content ── */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="max-w-6xl mx-auto px-6 py-8">
         {fields.length === 0 ? (
-          <div
-            className="rounded-2xl px-8 py-16 text-center card"
-          >
-            <p className="text-base font-bold mb-2" style={{ color: "var(--t-primary)" }}>
+          <div className="rounded-2xl px-8 py-16 text-center card">
+            <p
+              className="text-base font-bold mb-2"
+              style={{ color: "var(--t-primary)" }}
+            >
               No fields yet.
             </p>
             <p className="text-sm mb-4" style={{ color: "var(--t-muted)" }}>
               Recruitment resources will appear here once they&apos;re added.
             </p>
             {isAdmin && (
-              <a href="/admin/recruitment" className="text-sm font-bold" style={{ color: "var(--akp-gold)" }}>
+              <a
+                href="/admin/recruitment"
+                className="text-sm font-bold"
+                style={{ color: "var(--akp-gold)" }}
+              >
                 Add a field →
               </a>
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-12">
-            {fields.map((field, i) => (
-              <div key={field.id}>
-                <FieldSection field={field} isAdmin={isAdmin} />
-                {i < fields.length - 1 && (
-                  <div className="mt-12" style={{ borderBottom: "1px solid var(--b-subtle)" }} />
-                )}
-              </div>
-            ))}
-          </div>
+          <RecruitmentClient fields={fields} isAdmin={isAdmin} />
         )}
       </div>
     </main>

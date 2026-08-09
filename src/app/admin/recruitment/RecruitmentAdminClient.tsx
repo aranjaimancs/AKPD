@@ -1297,9 +1297,16 @@ function FolderUploadModal({
 
     // Seed map with existing subfolders (case-insensitive key = "name" or "parentname/name")
     const subfolderIdMap = new Map<string, string>();
-    for (const sf of field.recruitment_subfolders ?? []) {
+    const existingSubfolders = field.recruitment_subfolders ?? [];
+    const idToName = new Map(existingSubfolders.map((sf) => [sf.id, sf.name.toLowerCase()]));
+    for (const sf of existingSubfolders) {
       subfolderIdMap.set(sf.name.toLowerCase(), sf.id);
-      // Also index nested ones by parent/child key if we ever see them
+      if (sf.parent_id) {
+        const parentName = idToName.get(sf.parent_id);
+        if (parentName) {
+          subfolderIdMap.set(`${parentName}/${sf.name.toLowerCase()}`, sf.id);
+        }
+      }
     }
 
     let nextRootOrder =

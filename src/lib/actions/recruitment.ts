@@ -24,6 +24,7 @@ export type RecruitmentField = {
 export type RecruitmentResource = {
   id: string;
   field_id: string;
+  subfolder_id: string | null;
   title: string;
   description: string | null;
   resource_type: "file" | "link";
@@ -33,7 +34,20 @@ export type RecruitmentResource = {
   sort_order: number;
 };
 
+export type RecruitmentSubfolder = {
+  id: string;
+  field_id: string;
+  name: string;
+  sort_order: number;
+};
+
+export type SubfolderWithResources = RecruitmentSubfolder & {
+  recruitment_resources: RecruitmentResource[];
+};
+
 export type FieldWithResources = RecruitmentField & {
+  recruitment_subfolders: SubfolderWithResources[];
+  // All resources for this field (filter subfolder_id === null for top-level only)
   recruitment_resources: RecruitmentResource[];
 };
 
@@ -234,6 +248,7 @@ export async function moveField(
 export type ResourceInput = {
   id?: string;
   field_id: string;
+  subfolder_id?: string | null;
   title: string;
   description?: string;
   resource_type: "file" | "link";
@@ -251,6 +266,7 @@ export async function upsertResource(
 
   const row = {
     field_id: input.field_id,
+    subfolder_id: input.subfolder_id ?? null,
     title: input.title.trim(),
     description: input.description?.trim() || null,
     resource_type: input.resource_type,
@@ -345,6 +361,115 @@ export async function moveResource(
       .eq("id", a.id),
     supabase
       .from("recruitment_resources")
+      .update({ sort_order: a.sort_order })
+      .eq("id", b.id),
+  ]);
+
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
+
+// ── Admin: subfolder CRUD ─────────────────────────────────────────────────────
+
+export type SubfolderInput = {
+  id?: string;
+  field_id: string;
+  name: string;
+  sort_order?: number;
+};
+
+export async function upsertSubfolder(
+  input: SubfolderInput
+): Promise<{ error?: string; id?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { error: "admin_required" };
+
+  const supabase = createAdminClient();
+
+  if (input.id) {
+    const { error } = await supabase
+      .from("recruitment_subfolders")
+      .update({ name: input.name.trim(), sort_order: input.sort_order ?? 0 })
+      .eq("id", input.id);
+    if (error) return { error: error.message };
+    revalidatePath("/recruitment");
+    revalidatePath("/admin/recruitment");
+    return {};
+  } else {
+    const { data, error } = await supabase
+      .from("recruitment_subfolders")
+      .insert({
+        field_id: input.field_id,
+        name: input.name.trim(),
+        sort_order: input.sort_order ?? 0,
+      })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    revalidatePath("/recruitment");
+    revalidatePath("/admin/recruitment");
+    return { id: data.id };
+  }
+}
+
+export async function deleteSubfolder(
+  id: string
+): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { error: "admin_required" };
+
+  // ON DELETE SET NULL on subfolder_id means resources survive, unlinked
+  const { error } = await createAdminClient()
+    .from("recruitment_subfolders")
+    .delete()
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
+
+export async function moveSubfolder(
+  id: string,
+  direction: "up" | "down"
+): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { error: "admin_required" };
+
+  const supabase = createAdminClient();
+
+  const { data: subfolder } = await supabase
+    .from("recruitment_subfolders")
+    .select("id, field_id, sort_order")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!subfolder) return { error: "Subfolder not found." };
+
+  const { data: siblings } = await supabase
+    .from("recruitment_subfolders")
+    .select("id, sort_order")
+    .eq("field_id", subfolder.field_id)
+    .order("sort_order");
+
+  if (!siblings) return {};
+
+  const idx = siblings.findIndex((s) => s.id === id);
+  const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= siblings.length) return {};
+
+  const a = siblings[idx];
+  const b = siblings[swapIdx];
+
+  await Promise.all([
+    supabase
+      .from("recruitment_subfolders")
+      .update({ sort_order: b.sort_order })
+      .eq("id", a.id),
+    supabase
+      .from("recruitment_subfolders")
       .update({ sort_order: a.sort_order })
       .eq("id", b.id),
   ]);

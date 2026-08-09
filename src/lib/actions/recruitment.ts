@@ -37,6 +37,7 @@ export type RecruitmentResource = {
 export type RecruitmentSubfolder = {
   id: string;
   field_id: string;
+  parent_id: string | null;
   name: string;
   sort_order: number;
 };
@@ -375,6 +376,7 @@ export async function moveResource(
 export type SubfolderInput = {
   id?: string;
   field_id: string;
+  parent_id?: string | null;
   name: string;
   sort_order?: number;
 };
@@ -401,6 +403,7 @@ export async function upsertSubfolder(
       .from("recruitment_subfolders")
       .insert({
         field_id: input.field_id,
+        parent_id: input.parent_id ?? null,
         name: input.name.trim(),
         sort_order: input.sort_order ?? 0,
       })
@@ -442,17 +445,25 @@ export async function moveSubfolder(
 
   const { data: subfolder } = await supabase
     .from("recruitment_subfolders")
-    .select("id, field_id, sort_order")
+    .select("id, field_id, parent_id, sort_order")
     .eq("id", id)
     .maybeSingle();
 
   if (!subfolder) return { error: "Subfolder not found." };
+  if (subfolder.id === undefined) return { error: "Subfolder not found." };
 
-  const { data: siblings } = await supabase
+  // Scope siblings to same parent level
+  const baseQuery = supabase
     .from("recruitment_subfolders")
     .select("id, sort_order")
     .eq("field_id", subfolder.field_id)
     .order("sort_order");
+
+  const { data: siblings } = await (
+    subfolder.parent_id
+      ? baseQuery.eq("parent_id", subfolder.parent_id)
+      : baseQuery.is("parent_id", null)
+  );
 
   if (!siblings) return {};
 

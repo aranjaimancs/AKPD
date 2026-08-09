@@ -249,7 +249,7 @@ export default async function RecruitmentPage() {
     .select(
       `*,
      recruitment_subfolders (
-       id, field_id, name, sort_order,
+       id, field_id, parent_id, name, sort_order,
        recruitment_resources (
          id, field_id, subfolder_id, title, description, resource_type,
          file_path, file_mime, external_url, sort_order

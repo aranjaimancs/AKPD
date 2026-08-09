@@ -214,7 +214,11 @@ export default function RecruitmentClient({
       const hash = window.location.hash.replace("#", "");
       if (hash) {
         const match = fields.find((f) => f.slug === hash);
-        if (match) setOpenFieldId(match.id);
+        if (match) {
+          setOpenFieldId(match.id);
+        } else {
+          setOpenFieldId(null);
+        }
       }
     }
 

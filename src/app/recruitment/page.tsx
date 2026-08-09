@@ -105,8 +105,18 @@ function FieldSection({
   field: FieldWithResources;
   isAdmin: boolean;
 }) {
-  const resources = field.recruitment_resources ?? [];
-  const hasResources = resources.length > 0;
+  const subfolders = (field.recruitment_subfolders ?? []).sort(
+    (a, b) => a.sort_order - b.sort_order
+  );
+  const topLevelResources = (field.recruitment_resources ?? []).filter(
+    (r) => r.subfolder_id === null
+  );
+  const hasContent = subfolders.length > 0 || topLevelResources.length > 0;
+
+  const totalCount = subfolders.reduce(
+    (n, sf) => n + (sf.recruitment_resources?.length ?? 0),
+    topLevelResources.length
+  );
 
   return (
     <section id={field.slug} className="scroll-mt-20">
@@ -136,22 +146,17 @@ function FieldSection({
             )}
           </div>
         </div>
-
-        <span
-          className={`badge shrink-0 ${hasResources ? "badge-navy" : "badge-neutral"}`}
-        >
-          {hasResources ? `${resources.length} resource${resources.length !== 1 ? "s" : ""}` : "Coming soon"}
+        <span className={`badge shrink-0 ${hasContent ? "badge-navy" : "badge-neutral"}`}>
+          {hasContent
+            ? subfolders.length > 0
+              ? `${subfolders.length} folder${subfolders.length !== 1 ? "s" : ""} · ${totalCount} resource${totalCount !== 1 ? "s" : ""}`
+              : `${totalCount} resource${totalCount !== 1 ? "s" : ""}`
+            : "Coming soon"}
         </span>
       </div>
 
-      {/* Resources */}
-      {hasResources ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {resources.map((r) => (
-            <ResourceCard key={r.id} resource={r} />
-          ))}
-        </div>
-      ) : (
+      {/* Content */}
+      {!hasContent ? (
         <div
           className="rounded-xl px-6 py-7 text-center text-[13px]"
           style={{
@@ -164,10 +169,68 @@ function FieldSection({
           {isAdmin && (
             <>
               {" "}
-              <a href="/admin/recruitment" style={{ color: "var(--akp-gold)", fontWeight: 600 }}>
+              <a
+                href="/admin/recruitment"
+                style={{ color: "var(--akp-gold)", fontWeight: 600 }}
+              >
                 Add the first one →
               </a>
             </>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {/* Subfolder accordions */}
+          {subfolders.map((sf, idx) => (
+            <details key={sf.id} {...(idx === 0 ? { open: true } : {})}>
+              <summary
+                className="flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer list-none select-none transition-colors"
+                style={{
+                  background: "var(--s-1)",
+                  border: "1px solid var(--b-default)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm" style={{ color: "var(--t-muted)" }}>
+                    📁
+                  </span>
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color: "var(--t-primary)" }}
+                  >
+                    {sf.name}
+                  </span>
+                </div>
+                <span className="badge badge-neutral text-[11px]">
+                  {sf.recruitment_resources?.length ?? 0}
+                </span>
+              </summary>
+              <div className="pt-3 pb-1 px-1">
+                {(sf.recruitment_resources ?? []).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {(sf.recruitment_resources ?? []).map((r) => (
+                      <ResourceCard key={r.id} resource={r} />
+                    ))}
+                  </div>
+                ) : (
+                  <p
+                    className="text-[13px] text-center py-4"
+                    style={{ color: "var(--t-muted)" }}
+                  >
+                    No resources in this folder yet.
+                  </p>
+                )}
+              </div>
+            </details>
+          ))}
+
+          {/* Top-level resources (no subfolder) */}
+          {topLevelResources.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
+              {topLevelResources.map((r) => (
+                <ResourceCard key={r.id} resource={r} />
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -184,17 +247,30 @@ export default async function RecruitmentPage() {
   const { data: raw } = await createAdminClient()
     .from("recruitment_fields")
     .select(
-      `*, recruitment_resources (
-        id, field_id, title, description, resource_type,
-        file_path, file_mime, external_url, sort_order
-       )`
+      `*,
+     recruitment_subfolders (
+       id, field_id, name, sort_order,
+       recruitment_resources (
+         id, field_id, subfolder_id, title, description, resource_type,
+         file_path, file_mime, external_url, sort_order
+       )
+     ),
+     recruitment_resources (
+       id, field_id, subfolder_id, title, description, resource_type,
+       file_path, file_mime, external_url, sort_order
+     )`
     )
     .eq("is_published", true)
     .order("sort_order")
+    .order("sort_order", { referencedTable: "recruitment_subfolders" })
     .order("sort_order", { referencedTable: "recruitment_resources" });
 
   const fields = (raw ?? []) as FieldWithResources[];
-  const fieldsWithContent = fields.filter((f) => (f.recruitment_resources ?? []).length > 0);
+  const fieldsWithContent = fields.filter(
+    (f) =>
+      (f.recruitment_subfolders ?? []).length > 0 ||
+      (f.recruitment_resources ?? []).length > 0
+  );
 
   return (
     <main className="flex-1">

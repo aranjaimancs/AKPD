@@ -10,10 +10,15 @@ import {
   deleteResource,
   moveResource,
   getSignedUploadUrl,
+  upsertSubfolder,
+  deleteSubfolder,
+  moveSubfolder,
 } from "@/lib/actions/recruitment";
 import type {
   FieldWithResources,
   RecruitmentResource,
+  RecruitmentSubfolder,
+  SubfolderWithResources,
   FieldInput,
 } from "@/lib/actions/recruitment";
 
@@ -756,12 +761,14 @@ function ResourceModal({
 
 function ResourceRow({
   resource,
+  subfolder,
   fields,
   isFirst,
   isLast,
   onEdit,
 }: {
   resource: RecruitmentResource;
+  subfolder: RecruitmentSubfolder | null;
   fields: FieldWithResources[];
   isFirst: boolean;
   isLast: boolean;
@@ -790,6 +797,16 @@ function ResourceRow({
           ? mimeLabel(resource.file_mime)
           : "Link"}
       </span>
+
+      {/* Subfolder tag */}
+      {subfolder && (
+        <span
+          className="shrink-0 text-[10px] px-2 py-0.5 rounded-md font-medium hidden sm:block"
+          style={{ background: "var(--s-0)", color: "var(--t-muted)", border: "1px solid var(--b-subtle)" }}
+        >
+          📁 {subfolder.name}
+        </span>
+      )}
 
       {/* Title */}
       <p
@@ -863,6 +880,216 @@ function ResourceRow({
       >
         Delete
       </button>
+    </div>
+  );
+}
+
+// ── Subfolder row ─────────────────────────────────────────────────────────────
+
+function SubfolderRow({
+  subfolder,
+  resourceCount,
+  isFirst,
+  isLast,
+}: {
+  subfolder: RecruitmentSubfolder;
+  resourceCount: number;
+  isFirst: boolean;
+  isLast: boolean;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [name, setName] = useState(subfolder.name);
+  const [pending, startTransition] = useTransition();
+
+  function saveRename() {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === subfolder.name) {
+      setName(subfolder.name);
+      setRenaming(false);
+      return;
+    }
+    startTransition(async () => {
+      await upsertSubfolder({
+        id: subfolder.id,
+        field_id: subfolder.field_id,
+        name: trimmed,
+        sort_order: subfolder.sort_order,
+      });
+      setRenaming(false);
+    });
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 py-2 px-3 rounded-xl transition-opacity"
+      style={{
+        background: "var(--s-2)",
+        border: "1px solid var(--b-subtle)",
+        opacity: pending ? 0.5 : 1,
+      }}
+    >
+      <span className="text-sm shrink-0" style={{ color: "var(--t-muted)" }}>
+        📁
+      </span>
+
+      {renaming ? (
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") saveRename();
+            if (e.key === "Escape") {
+              setName(subfolder.name);
+              setRenaming(false);
+            }
+          }}
+          className="input flex-1 text-sm"
+          style={{ padding: "2px 8px", height: "auto" }}
+        />
+      ) : (
+        <span
+          className="flex-1 text-sm font-medium truncate"
+          style={{ color: "var(--t-primary)" }}
+        >
+          {subfolder.name}
+        </span>
+      )}
+
+      <span className="badge badge-neutral text-[10px] shrink-0">
+        {resourceCount}
+      </span>
+
+      {/* Reorder */}
+      <button
+        disabled={isFirst || pending}
+        onClick={() =>
+          startTransition(async () => {
+            await moveSubfolder(subfolder.id, "up");
+          })
+        }
+        className="w-5 h-5 flex items-center justify-center text-xs disabled:opacity-20 transition-colors rounded"
+        style={{ color: "var(--t-muted)" }}
+        title="Move up"
+      >
+        ↑
+      </button>
+      <button
+        disabled={isLast || pending}
+        onClick={() =>
+          startTransition(async () => {
+            await moveSubfolder(subfolder.id, "down");
+          })
+        }
+        className="w-5 h-5 flex items-center justify-center text-xs disabled:opacity-20 transition-colors rounded"
+        style={{ color: "var(--t-muted)" }}
+        title="Move down"
+      >
+        ↓
+      </button>
+
+      {renaming ? (
+        <>
+          <button
+            onClick={saveRename}
+            disabled={pending}
+            className="btn btn-primary btn-sm disabled:opacity-50"
+            style={{ padding: "2px 10px" }}
+          >
+            Save
+          </button>
+          <button
+            onClick={() => {
+              setName(subfolder.name);
+              setRenaming(false);
+            }}
+            className="btn btn-ghost btn-sm"
+            style={{ padding: "2px 10px" }}
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={() => setRenaming(true)}
+          className="btn btn-ghost btn-sm"
+        >
+          Rename
+        </button>
+      )}
+
+      <button
+        disabled={pending}
+        onClick={() => {
+          if (
+            !confirm(
+              `Delete "${subfolder.name}"? Its resources won't be deleted — they'll appear as top-level.`
+            )
+          )
+            return;
+          startTransition(async () => {
+            await deleteSubfolder(subfolder.id);
+          });
+        }}
+        className="text-xs font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-30 shrink-0"
+        style={{ color: "#dc2626" }}
+      >
+        Delete
+      </button>
+    </div>
+  );
+}
+
+// ── Add subfolder inline form ─────────────────────────────────────────────────
+
+function AddSubfolderForm({ fieldId, nextSortOrder }: { fieldId: string; nextSortOrder: number }) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function submit() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setError("");
+    startTransition(async () => {
+      const result = await upsertSubfolder({
+        field_id: fieldId,
+        name: trimmed,
+        sort_order: nextSortOrder,
+      });
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setName("");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-1 mt-1">
+      <div className="flex gap-2 items-center">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
+          placeholder="New subfolder name…"
+          className="input flex-1 text-sm"
+        />
+        <button
+          onClick={submit}
+          disabled={pending || !name.trim()}
+          className="btn btn-primary btn-sm disabled:opacity-50 shrink-0"
+        >
+          {pending ? "Adding…" : "+ Add"}
+        </button>
+      </div>
+      {error && (
+        <p className="text-xs" style={{ color: "#dc2626" }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -1032,43 +1259,90 @@ function FieldCard({
         </button>
       </div>
 
-      {/* Expanded resources */}
+      {/* Expanded: subfolders + resources */}
       {expanded && (
         <div
-          className="px-4 pb-4 flex flex-col gap-2"
+          className="px-4 pb-4 flex flex-col gap-4"
           style={{ borderTop: "1px solid var(--b-subtle)" }}
         >
-          <div className="flex items-center justify-between pt-3 pb-1">
-            <p
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: "var(--t-muted)" }}
-            >
-              Resources
-            </p>
-            <button
-              onClick={() => onAddResource(field.id)}
-              className="btn btn-primary btn-sm"
-            >
-              + Add Resource
-            </button>
+          {/* ── Subfolders section ── */}
+          <div className="pt-3">
+            <div className="flex items-center justify-between pb-2">
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "var(--t-muted)" }}
+              >
+                Subfolders
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {(field.recruitment_subfolders ?? []).length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--t-faint)" }}>
+                  No subfolders yet — add one to group resources.
+                </p>
+              ) : (
+                (field.recruitment_subfolders ?? []).map((sf, i, arr) => (
+                  <SubfolderRow
+                    key={sf.id}
+                    subfolder={sf}
+                    resourceCount={sf.recruitment_resources?.length ?? 0}
+                    isFirst={i === 0}
+                    isLast={i === arr.length - 1}
+                  />
+                ))
+              )}
+              <AddSubfolderForm
+                fieldId={field.id}
+                nextSortOrder={
+                  (field.recruitment_subfolders ?? []).length > 0
+                    ? Math.max(...(field.recruitment_subfolders ?? []).map((s) => s.sort_order)) + 10
+                    : 10
+                }
+              />
+            </div>
           </div>
 
-          {resources.length === 0 ? (
-            <p className="text-xs text-center py-4" style={{ color: "var(--t-muted)" }}>
-              No resources yet.
-            </p>
-          ) : (
-            resources.map((r, i) => (
-              <ResourceRow
-                key={r.id}
-                resource={r}
-                fields={fields}
-                isFirst={i === 0}
-                isLast={i === resources.length - 1}
-                onEdit={(res) => setEditingResource(res)}
-              />
-            ))
-          )}
+          {/* ── Resources section ── */}
+          <div style={{ borderTop: "1px solid var(--b-subtle)", paddingTop: "1rem" }}>
+            <div className="flex items-center justify-between pb-2">
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "var(--t-muted)" }}
+              >
+                Resources
+              </p>
+              <button
+                onClick={() => onAddResource(field.id)}
+                className="btn btn-primary btn-sm"
+              >
+                + Add Resource
+              </button>
+            </div>
+
+            {(field.recruitment_resources ?? []).length === 0 ? (
+              <p className="text-xs text-center py-4" style={{ color: "var(--t-muted)" }}>
+                No resources yet.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {(field.recruitment_resources ?? []).map((r, i, arr) => (
+                  <ResourceRow
+                    key={r.id}
+                    resource={r}
+                    subfolder={
+                      (field.recruitment_subfolders ?? []).find(
+                        (sf) => sf.id === r.subfolder_id
+                      ) ?? null
+                    }
+                    fields={fields}
+                    isFirst={i === 0}
+                    isLast={i === arr.length - 1}
+                    onEdit={(res) => setEditingResource(res)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

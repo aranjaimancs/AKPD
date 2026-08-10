@@ -263,6 +263,11 @@ Manage recruitment fields and resources (file upload + links).
 ### `/admin/opportunities`
 Approve/reject submitted opportunities.
 
+### Invite System
+Admin generates a 24-hour shareable invite link from `/admin/members` (Invite Link panel at top of page). Anyone with the link visits `/invite/[token]`, fills in name/email/role/position. Each submission creates a pending `invite_request`. Admin approves or rejects from the Pending Requests panel in `/admin/members`. Approval inserts the person into `members` and fires a Supabase invite email (`auth.admin.inviteUserByEmail`). Person clicks the email link → `/auth/callback` (existing token_hash invite flow) → onboarding.
+
+**Regenerating the link** deactivates the old one immediately — anyone with the old URL sees the expired message.
+
 ---
 
 ## Design System
@@ -370,6 +375,9 @@ Run each in order via **Supabase Dashboard → SQL Editor → New query**. All a
 | 008 | `008_class_reviews.sql` | class_reviews table + RLS |
 | 009 | `009_people_email.sql` | adds email column to people table for profile sync |
 | 010 | `010_class_resources.sql` | class_resources table + RLS + class-resources storage bucket |
+| 011 | `011_recruitment_subfolders.sql` | recruitment_subfolders table for nested resource organization |
+| 012 | `012_nested_subfolders.sql` | parent_id column on recruitment_subfolders for nesting |
+| 013 | `013_invite_system.sql` | invite_links + invite_requests tables for self-service member onboarding |
 
 ---
 
@@ -394,3 +402,7 @@ Run each in order via **Supabase Dashboard → SQL Editor → New query**. All a
 9. **Class resources storage bucket.** Created as part of migration 010. If the bucket doesn't exist, file uploads will fail silently (storage error caught, returns user-facing error). Confirm the bucket exists in Supabase Dashboard → Storage before testing uploads.
 
 10. **Course code normalization.** Both the review and resource forms normalize input (`"comp550"` → `"COMP 550"`). The department is always derived as the letter prefix (`"COMP"`). This normalization runs server-side in the action — the client form may display raw input until submit.
+
+11. **Invite email requires Supabase SMTP configured.** `inviteUserByEmail` uses Supabase's built-in email relay. In Supabase Dashboard → Auth → Email Templates → Invite, set the redirect URL to `{{ .SiteURL }}/auth/callback`. If the email relay is not configured, approval will succeed (member row is inserted) but the invite email will fail — the admin will see an error message and can use "Set PW" as a fallback.
+
+12. **One active invite link at a time.** Generating a new link deactivates all prior links immediately. Old URLs return the expired message. The `/invite/[token]` route is public (no auth required) — add it to the middleware `PUBLIC_PREFIXES` is already done.

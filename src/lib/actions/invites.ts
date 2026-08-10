@@ -152,7 +152,11 @@ export async function approveInviteRequest(
   }
 
   // Send Supabase invite email
-  const { error: inviteError } = await db.auth.admin.inviteUserByEmail(req.email);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const { error: inviteError } = await db.auth.admin.inviteUserByEmail(req.email, {
+    redirectTo: `${siteUrl}/auth/callback`,
+  });
   if (inviteError) {
     // Non-fatal — member was added. Surface a warning but don't block.
     console.error("approveInviteRequest inviteUserByEmail error:", inviteError.message);

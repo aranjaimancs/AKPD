@@ -2,7 +2,9 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { addMember, updateMember, updateMemberRole, removeMember, setMemberPassword, bulkAddMembers } from "@/lib/actions/members";
+import { generateInviteLink, approveInviteRequest, rejectInviteRequest } from "@/lib/actions/invites";
 import type { Member } from "@/lib/auth";
+import type { InviteLink, InviteRequest } from "@/lib/actions/invites";
 
 // ── CSV parser ────────────────────────────────────────────────────────────────
 
@@ -789,6 +791,272 @@ function ImportModal({
   );
 }
 
+// ── Invite Panel ──────────────────────────────────────────────────────────────
+
+function InvitePanel({ activeLink }: { activeLink: InviteLink | null }) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const siteUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/invite/${activeLink?.token ?? ""}`
+      : "";
+
+  const expiresIn = activeLink
+    ? Math.max(
+        0,
+        Math.round(
+          (new Date(activeLink.expires_at).getTime() - Date.now()) / (1000 * 60 * 60)
+        )
+      )
+    : 0;
+
+  function generate() {
+    setError(null);
+    startTransition(async () => {
+      const result = await generateInviteLink();
+      if (result.error) {
+        setError(result.error);
+      } else if (result.token) {
+        const url = `${window.location.origin}/invite/${result.token}`;
+        navigator.clipboard.writeText(url).catch(() => {});
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      }
+    });
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(siteUrl).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  }
+
+  return (
+    <div
+      className="rounded-2xl p-5 mb-6"
+      style={{
+        background: "var(--s-0)",
+        border: "1px solid var(--b-default)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+    >
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2
+            className="text-[14px] font-bold"
+            style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
+          >
+            Invite Link
+          </h2>
+          {activeLink ? (
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+              Active · expires in {expiresIn} hr{expiresIn !== 1 ? "s" : ""}
+            </p>
+          ) : (
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+              No active link — generate one to onboard members.
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {activeLink && (
+            <button
+              onClick={copyLink}
+              className="btn btn-ghost btn-sm"
+              disabled={isPending}
+            >
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
+          )}
+          <button
+            onClick={generate}
+            disabled={isPending}
+            className="btn btn-primary btn-sm disabled:opacity-50"
+          >
+            {isPending
+              ? "Generating…"
+              : activeLink
+              ? "Regenerate"
+              : "Generate Link"}
+          </button>
+        </div>
+      </div>
+
+      {activeLink && (
+        <div
+          className="mt-3 rounded-lg px-3 py-2 text-[11px] font-mono truncate"
+          style={{
+            background: "var(--s-1)",
+            color: "var(--t-secondary)",
+            border: "1px solid var(--b-subtle)",
+          }}
+        >
+          {siteUrl}
+        </div>
+      )}
+
+      {copied && !activeLink && (
+        <p className="text-[12px] mt-2" style={{ color: "var(--akp-gold)" }}>
+          Link copied to clipboard!
+        </p>
+      )}
+
+      {error && (
+        <p className="text-[12px] mt-2" style={{ color: "#dc2626" }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Pending Requests ──────────────────────────────────────────────────────────
+
+function PendingRequests({ requests }: { requests: InviteRequest[] }) {
+  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  if (requests.length === 0) return null;
+
+  function approve(id: string) {
+    setErrors((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    startTransition(async () => {
+      const result = await approveInviteRequest(id);
+      if (result.error) {
+        setErrors((prev) => ({ ...prev, [id]: result.error! }));
+      }
+    });
+  }
+
+  function reject(id: string) {
+    if (!confirm("Reject this request?")) return;
+    setErrors((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    startTransition(async () => {
+      const result = await rejectInviteRequest(id);
+      if (result.error) {
+        setErrors((prev) => ({ ...prev, [id]: result.error! }));
+      }
+    });
+  }
+
+  function timeAgo(iso: string) {
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.round(hrs / 24)}d ago`;
+  }
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden mb-6"
+      style={{
+        background: "var(--s-0)",
+        border: "1px solid var(--b-default)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+    >
+      <div
+        className="px-4 py-2.5 flex items-center gap-2"
+        style={{ background: "var(--s-1)", borderBottom: "1px solid var(--b-subtle)" }}
+      >
+        <span
+          className="text-[10px] font-bold uppercase tracking-widest"
+          style={{ color: "var(--t-muted)" }}
+        >
+          Pending Requests
+        </span>
+        <span
+          className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+          style={{
+            background: "rgba(201,168,76,0.15)",
+            color: "var(--akp-gold)",
+          }}
+        >
+          {requests.length}
+        </span>
+      </div>
+
+      <table className="w-full">
+        <tbody>
+          {requests.map((req) => (
+            <tr
+              key={req.id}
+              className="border-t"
+              style={{ borderColor: "var(--b-default)" }}
+            >
+              <td className="px-4 py-3.5">
+                <p className="text-sm font-semibold" style={{ color: "var(--t-primary)" }}>
+                  {req.full_name}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--t-muted)" }}>
+                  {req.email}
+                  {req.position ? ` · ${req.position}` : ""}
+                </p>
+                {errors[req.id] && (
+                  <p className="text-xs mt-1" style={{ color: "#dc2626" }}>
+                    {errors[req.id]}
+                  </p>
+                )}
+              </td>
+
+              <td className="px-4 py-3.5 hidden sm:table-cell">
+                <span
+                  className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                  style={
+                    req.role === "alumni"
+                      ? { background: "rgba(168,85,247,0.10)", color: "#c084fc" }
+                      : { background: "var(--s-1)", color: "var(--t-secondary)", border: "1px solid var(--b-default)" }
+                  }
+                >
+                  {req.role}
+                </span>
+              </td>
+
+              <td
+                className="px-4 py-3.5 text-right text-[11px] hidden md:table-cell"
+                style={{ color: "var(--t-faint)" }}
+              >
+                {timeAgo(req.created_at)}
+              </td>
+
+              <td className="px-4 py-3.5">
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    onClick={() => reject(req.id)}
+                    disabled={isPending}
+                    className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors disabled:opacity-30"
+                    style={{ color: "#dc2626" }}
+                    onMouseEnter={(e) =>
+                      ((e.currentTarget as HTMLElement).style.background = "rgba(220,38,38,0.06)")
+                    }
+                    onMouseLeave={(e) =>
+                      ((e.currentTarget as HTMLElement).style.background = "transparent")
+                    }
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => approve(req.id)}
+                    disabled={isPending}
+                    className="btn btn-primary btn-sm disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Member row ────────────────────────────────────────────────────────────────
 
 function MemberRow({
@@ -934,9 +1202,13 @@ function MemberRow({
 export default function MembersClient({
   members,
   currentEmail,
+  activeLink,
+  pendingRequests,
 }: {
   members: Member[];
   currentEmail: string;
+  activeLink: InviteLink | null;
+  pendingRequests: InviteRequest[];
 }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -960,6 +1232,9 @@ export default function MembersClient({
 
   return (
     <>
+      <InvitePanel activeLink={activeLink} />
+      <PendingRequests requests={pendingRequests} />
+
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <input

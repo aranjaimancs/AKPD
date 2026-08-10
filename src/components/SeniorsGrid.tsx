@@ -137,7 +137,8 @@ export default function SeniorsGrid({ seniors }: Props) {
 }
 
 function SeniorCard({ senior, index }: { senior: SeniorIndex; index: number }) {
-  const headshotUrl = `/seniors-content/${senior.slug}/${senior.headshot}`;
+  const headshotUrl = senior.headshot || null;
+  const initials = senior.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
   const academicLine = [
     ...senior.majors,
     ...senior.minors.map((m) => `${m} Minor`),
@@ -154,14 +155,23 @@ function SeniorCard({ senior, index }: { senior: SeniorIndex; index: number }) {
         style={{ borderRadius: "var(--r-xl)" }}
       >
         {/* Photo — 4:3 aspect, not full card */}
-        <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
-          <Image
-            src={headshotUrl}
-            alt={senior.name}
-            fill
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-103"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
+        <div
+          className="relative overflow-hidden flex items-center justify-center"
+          style={{ aspectRatio: "4 / 3", background: "var(--s-1)" }}
+        >
+          {headshotUrl ? (
+            <Image
+              src={headshotUrl}
+              alt={senior.name}
+              fill
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-103"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+          ) : (
+            <span className="text-3xl font-bold" style={{ color: "var(--akp-gold)" }}>
+              {initials}
+            </span>
+          )}
           {/* Subtle bottom fade into card */}
           <div
             className="absolute inset-0"

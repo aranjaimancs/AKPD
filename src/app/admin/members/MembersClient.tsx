@@ -14,6 +14,10 @@ type ParsedRow = {
   position: string | null;
   valid: boolean;
   rawIndex: number;
+  /** Set when the row should be excluded from import (but still shown in review). */
+  skipReason?: "inactive" | "missing_email";
+  /** Raw status value from the chapter roster CSV (e.g. "Active", "Transferred"). */
+  status?: string;
 };
 
 /** Parse a single CSV line respecting RFC 4180 quoted fields. */
@@ -67,6 +71,70 @@ function parseGoogleFormCsv(text: string): ParsedRow[] {
 
     return { email, full_name, position, valid: email.length > 0, rawIndex: i };
   });
+}
+
+/**
+ * Parse a chapter roster CSV (e.g. "Member Information Master Data").
+ * Expected headers include: Name, Last Name, Name (full), Status, Personal Email
+ * Rows that are not "Active" are included in the review table but marked
+ * with skipReason="inactive" so they are pre-deselected and can't be imported.
+ */
+function parseChapterRosterCsv(text: string): ParsedRow[] {
+  const lines = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .filter((l) => l.trim().length > 0);
+
+  if (lines.length < 2) return [];
+
+  const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase().trim());
+
+  const statusIdx       = headers.indexOf("status");
+  const personalEmailIdx = headers.indexOf("personal email");
+
+  // "Name" appears twice: index 0 = first name only, index 2 = full name.
+  // Find the second occurrence.
+  let fullNameIdx = -1;
+  let nameCount = 0;
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i] === "name") {
+      nameCount++;
+      if (nameCount === 2) { fullNameIdx = i; break; }
+    }
+  }
+  // Fallback: use first "name" occurrence
+  if (fullNameIdx === -1) fullNameIdx = headers.indexOf("name");
+
+  return lines.slice(1).map((line, i) => {
+    const fields = parseCSVLine(line);
+    const get = (idx: number) => (idx >= 0 ? (fields[idx] ?? "").trim() : "");
+
+    const status    = get(statusIdx);
+    const email     = get(personalEmailIdx).toLowerCase();
+    const full_name = get(fullNameIdx) || null;
+    const isActive  = status.toLowerCase() === "active";
+    const hasEmail  = email.length > 0;
+
+    let skipReason: ParsedRow["skipReason"];
+    if (!hasEmail)       skipReason = "missing_email";
+    else if (!isActive)  skipReason = "inactive";
+
+    return { email, full_name, position: null, valid: hasEmail, rawIndex: i, status, skipReason };
+  });
+}
+
+/**
+ * Detect whether the CSV is a chapter roster or a Google Forms export,
+ * then parse accordingly.
+ */
+function detectAndParseCsv(text: string): { rows: ParsedRow[]; format: "roster" | "google-form" } {
+  const firstLine = text.split(/\r?\n/)[0] ?? "";
+  const headers   = parseCSVLine(firstLine).map((h) => h.toLowerCase().trim());
+  if (headers.includes("status") && headers.includes("personal email")) {
+    return { rows: parseChapterRosterCsv(text), format: "roster" };
+  }
+  return { rows: parseGoogleFormCsv(text), format: "google-form" };
 }
 
 // ── Shared field ──────────────────────────────────────────────────────────────
@@ -508,6 +576,7 @@ function ImportModal({
   const [result, setResult] = useState<{ added: number; skipped: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [csvFormat, setCsvFormat] = useState<"roster" | "google-form" | null>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -520,12 +589,13 @@ function ImportModal({
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const parsed = parseGoogleFormCsv(text);
+      const { rows: parsed, format } = detectAndParseCsv(text);
+      setCsvFormat(format);
       setRows(parsed);
-      // Pre-select all valid, non-duplicate rows
+      // Pre-select all valid, non-duplicate, non-skipped rows
       const initial = new Set(
         parsed
-          .filter((r) => r.valid && !existingEmails.has(r.email))
+          .filter((r) => r.valid && !existingEmails.has(r.email) && !r.skipReason)
           .map((r) => r.rawIndex)
       );
       setSelected(initial);
@@ -550,7 +620,7 @@ function ImportModal({
 
   function handleImport() {
     const toImport = rows
-      .filter((r) => selected.has(r.rawIndex) && r.valid && !existingEmails.has(r.email))
+      .filter((r) => selected.has(r.rawIndex) && r.valid && !existingEmails.has(r.email) && !r.skipReason)
       .map(({ email, full_name, position }) => ({ email, full_name, position }));
 
     if (!toImport.length) return;
@@ -570,6 +640,7 @@ function ImportModal({
   const validRows    = rows.filter((r) => r.valid);
   const dupRows      = rows.filter((r) => r.valid && existingEmails.has(r.email));
   const invalidRows  = rows.filter((r) => !r.valid);
+  const inactiveRows = rows.filter((r) => r.valid && !existingEmails.has(r.email) && r.skipReason === "inactive");
   const importCount  = rows.filter((r) => selected.has(r.rawIndex)).length;
   const hasRows      = rows.length > 0;
 
@@ -659,9 +730,9 @@ function ImportModal({
                   Click to upload or drag & drop
                 </span>
                 <span className="text-xs text-center" style={{ color: "var(--t-muted)" }}>
-                  Export your Google Form responses as CSV and upload here.
+                  Supports the chapter roster CSV <em>or</em> a Google Forms export.
                   <br />
-                  Expected columns: <code style={{ color: "var(--t-secondary)" }}>Email Address, Full Name, Position</code>
+                  For the roster: only <strong style={{ color: "var(--t-secondary)" }}>Active</strong> members are imported using their personal email.
                 </span>
               </label>
             </div>
@@ -670,10 +741,21 @@ function ImportModal({
             <div className="flex flex-col">
               {/* Summary bar */}
               <div
-                className="px-6 py-3 text-[12px] flex gap-4 shrink-0"
+                className="px-6 py-3 text-[12px] flex gap-4 shrink-0 flex-wrap items-center"
                 style={{ background: "var(--s-1)", borderBottom: "1px solid var(--b-subtle)", color: "var(--t-secondary)" }}
               >
-                <span>{validRows.length} valid</span>
+                {csvFormat === "roster" && (
+                  <span
+                    className="font-bold uppercase tracking-wide text-[10px] px-2 py-0.5 rounded-full mr-1"
+                    style={{ background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }}
+                  >
+                    Chapter roster
+                  </span>
+                )}
+                <span>{rows.filter((r) => r.valid && !existingEmails.has(r.email) && !r.skipReason).length} importable</span>
+                {inactiveRows.length > 0 && (
+                  <span style={{ color: "var(--t-muted)" }}>{inactiveRows.length} inactive / transferred (skipped)</span>
+                )}
                 {dupRows.length > 0 && (
                   <span style={{ color: "#b45309" }}>{dupRows.length} already exist (skipped)</span>
                 )}
@@ -695,9 +777,10 @@ function ImportModal({
                 </thead>
                 <tbody>
                   {rows.map((row) => {
-                    const isDup     = row.valid && existingEmails.has(row.email);
-                    const isInvalid = !row.valid;
-                    const isDisabled = isDup || isInvalid;
+                    const isDup      = row.valid && existingEmails.has(row.email);
+                    const isInvalid  = !row.valid;
+                    const isInactive = row.skipReason === "inactive";
+                    const isDisabled = isDup || isInvalid || isInactive;
                     const isChecked  = selected.has(row.rawIndex);
 
                     return (
@@ -742,6 +825,14 @@ function ImportModal({
                               style={{ background: "rgba(220,38,38,0.1)", color: "#dc2626" }}
                             >
                               Missing email
+                            </span>
+                          )}
+                          {isInactive && (
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                              style={{ background: "rgba(100,116,139,0.08)", color: "#94a3b8", border: "1px solid rgba(100,116,139,0.2)" }}
+                            >
+                              {row.status ?? "Not active"}
                             </span>
                           )}
                         </td>

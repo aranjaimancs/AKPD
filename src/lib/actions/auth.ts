@@ -80,6 +80,65 @@ export async function signInWithEmail(
   redirect(isNewUser ? "/onboarding" : "/people");
 }
 
+// ── Post-session setup (hash-based email invite flow) ────────────────────────
+//
+// Called from /auth/confirm after the client has established a session via
+// supabase.auth.setSession() from hash fragment tokens.  Mirrors the allowlist
+// check + profile upsert + metadata stamp done in /auth/callback/route.ts for
+// the PKCE flow.  Returns the URL the client should navigate to next.
+export async function completeEmailAuth(): Promise<string> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.email) return "/login?error=auth_failed";
+
+  const email = user.email.toLowerCase().trim();
+  const admin = createAdminClient();
+
+  // Authoritative allowlist check
+  const { data: member } = await admin
+    .from("members")
+    .select("id, role, auth_user_id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (!member) {
+    await supabase.auth.signOut();
+    return "/not-authorized";
+  }
+
+  // Link auth_user_id + upsert profile (parallel)
+  await Promise.all([
+    !member.auth_user_id
+      ? admin.from("members").update({ auth_user_id: user.id }).eq("id", member.id)
+      : Promise.resolve(),
+    admin
+      .from("profiles")
+      .upsert({ id: user.id, email }, { onConflict: "id", ignoreDuplicates: true }),
+  ]);
+
+  // Check profile completeness to route correctly
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const isNewUser = !profile?.full_name;
+
+  // Stamp role + onboarding flag into JWT metadata
+  await admin.auth.admin.updateUserById(user.id, {
+    user_metadata: {
+      role: member.role,
+      ...(isNewUser ? {} : { onboarding_complete: true }),
+    },
+  });
+
+  return isNewUser ? "/onboarding" : "/people";
+}
+
 // ── Password reset / first-time account setup ─────────────────────────────────
 
 export async function sendPasswordReset(

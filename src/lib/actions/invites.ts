@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 
 export type InviteLink = {
   id: string;
@@ -151,9 +152,14 @@ export async function approveInviteRequest(
     return { error: "Failed to add member. Please try again." };
   }
 
-  // Send Supabase invite email
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  // Send Supabase invite email.
+  // Derive the site URL from the actual request host so the redirectTo in the
+  // invite email always matches the production domain — even on Vercel preview
+  // deployments where VERCEL_URL is a per-deploy hash URL, not the custom domain.
+  const hdrs = await headers();
+  const host  = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+  const proto = hdrs.get("x-forwarded-proto") ?? "http";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `${proto}://${host}`;
   const { error: inviteError } = await db.auth.admin.inviteUserByEmail(req.email, {
     redirectTo: `${siteUrl}/auth/callback`,
   });

@@ -41,7 +41,21 @@ export async function GET(request: NextRequest) {
   const siteUrl = getSiteUrl(request);
 
   if (!code && !tokenHash) {
-    return NextResponse.redirect(new URL("/login?error=no_code", siteUrl));
+    // Supabase may have redirected here with the session in the URL hash fragment
+    // (implicit / non-PKCE email invite flow: #access_token=...&refresh_token=...).
+    // Hash fragments are never sent to the server, so we can't read them here.
+    // Serve a thin HTML page that reads the hash client-side and forwards it to
+    // /auth/confirm for proper handling — without losing the fragment on redirect.
+    return new NextResponse(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Signing in…</title></head>
+<body><script>
+var h=window.location.hash;
+if(h&&h.length>1){window.location.replace('/auth/confirm'+h);}
+else{window.location.replace('/login?error=no_code');}
+</script><noscript><meta http-equiv="refresh" content="0;url=/login?error=no_code"></noscript>
+</body></html>`,
+      { headers: { "Content-Type": "text/html; charset=utf-8" } }
+    );
   }
 
   // Use /onboarding as the initial redirect target so session cookies are

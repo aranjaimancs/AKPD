@@ -62,6 +62,39 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+/**
+ * Spread co-located pins (identical lat/lng) into a tiny circle so they don't
+ * stack on top of each other at high zoom. The radius (~30 m) is imperceptible
+ * at zoom < 14 but separates the markers at zoom 16+.
+ */
+function jitterColocated(pins: PersonPin[]): PersonPin[] {
+  const RADIUS = 0.0003; // ~30 m in degrees
+  const groups = new Map<string, PersonPin[]>();
+
+  for (const pin of pins) {
+    const key = `${pin.lat.toFixed(5)},${pin.lng.toFixed(5)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(pin);
+  }
+
+  const result: PersonPin[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      result.push(group[0]);
+    } else {
+      group.forEach((pin, i) => {
+        const angle = (2 * Math.PI * i) / group.length;
+        result.push({
+          ...pin,
+          lat: pin.lat + RADIUS * Math.cos(angle),
+          lng: pin.lng + RADIUS * Math.sin(angle),
+        });
+      });
+    }
+  }
+  return result;
+}
+
 // ── Icon factories ────────────────────────────────────────────────────────────
 
 function makeClusterIcon(count: number): L.DivIcon {
@@ -140,8 +173,9 @@ function ClusterLayer({
   );
 
   useEffect(() => {
+    const jittered = jitterColocated(pins);
     scRef.current.load(
-      pins.map((pin) => ({
+      jittered.map((pin) => ({
         type: "Feature" as const,
         geometry: { type: "Point" as const, coordinates: [pin.lng, pin.lat] },
         properties: { pin },

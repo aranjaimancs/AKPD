@@ -109,7 +109,7 @@ function SubfolderPanel({
     );
 
   return (
-    <details open={depth === 0}>
+    <details>
       <summary
         className="flex items-center justify-between px-4 py-3 cursor-pointer list-none select-none transition-colors rounded-xl"
         style={{

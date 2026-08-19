@@ -37,6 +37,8 @@ export default function AuthConfirmPage() {
 
     const supabase = createClient();
 
+    const type = params.get("type"); // "invite" | "recovery" | "magiclink" | …
+
     supabase.auth
       .setSession({ access_token: accessToken, refresh_token: refreshToken })
       .then(async ({ error: sessionError }) => {
@@ -48,7 +50,17 @@ export default function AuthConfirmPage() {
 
         // Session is established — run server-side setup (allowlist, profile, metadata).
         const dest = await completeEmailAuth();
-        router.replace(dest);
+
+        // For recovery links (re-sent "forgot password" flow) mirror the PKCE path:
+        // route to /auth/reset-password so the user can set their password before
+        // continuing.  Only do this if setup actually succeeded (dest is not an error
+        // redirect like /not-authorized or /login?error=…).
+        const setupSucceeded = dest === "/onboarding" || dest === "/people";
+        if (type === "recovery" && setupSucceeded) {
+          router.replace("/auth/reset-password");
+        } else {
+          router.replace(dest);
+        }
       });
   }, [router]);
 

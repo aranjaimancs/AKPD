@@ -13,7 +13,7 @@ const STEPS = [
   {
     id: "identity",
     eyebrow: "Step 1 of 4",
-    title: "Welcome to AKΨ Delta",
+    title: "Welcome to AKΨ",
     subtitle: "Let's start with your photo and name — this is how brothers will recognize you.",
   },
   {

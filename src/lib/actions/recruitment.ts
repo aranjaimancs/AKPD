@@ -917,3 +917,162 @@ export async function withdrawBatch(batchId: string): Promise<{ error?: string }
   revalidatePath("/admin/recruitment");
   return {};
 }
+
+// ── Admin: review pending submissions ────────────────────────────────────────
+
+export async function getPendingSubmissions(): Promise<{
+  fieldProposals: RecruitmentField[];
+  batches: PendingBatch[];
+}> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { fieldProposals: [], batches: [] };
+
+  const supabase = createAdminClient();
+
+  const { data: proposals } = await supabase
+    .from("recruitment_fields")
+    .select("*")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  const { data: rawBatches } = await supabase
+    .from("recruitment_batches")
+    .select(
+      `*, recruitment_fields!inner (name, slug),
+       recruitment_resources (
+         id, field_id, subfolder_id, title, description, resource_type,
+         file_path, file_mime, external_url, sort_order, batch_id, status
+       ),
+       recruitment_subfolders (
+         id, field_id, parent_id, name, sort_order, batch_id, status
+       )`
+    )
+    .eq("status", "pending_review")
+    .order("created_at", { ascending: true });
+
+  const batches: PendingBatch[] = (rawBatches ?? []).map((b) => {
+    const { recruitment_fields, ...rest } = b as typeof b & {
+      recruitment_fields: { name: string; slug: string };
+    };
+    return {
+      ...rest,
+      field_name: recruitment_fields?.name ?? "",
+      field_slug: recruitment_fields?.slug ?? "",
+      recruitment_resources: (rest.recruitment_resources ?? []) as RecruitmentResource[],
+      recruitment_subfolders: (rest.recruitment_subfolders ?? []) as RecruitmentSubfolder[],
+    };
+  });
+
+  return {
+    fieldProposals: (proposals ?? []) as RecruitmentField[],
+    batches,
+  };
+}
+
+export async function approveFieldProposal(id: string): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { error: "admin_required" };
+
+  const { error } = await createAdminClient()
+    .from("recruitment_fields")
+    .update({ status: "live", is_published: true })
+    .eq("id", id)
+    .eq("status", "pending");
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
+
+export async function rejectFieldProposal(id: string): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { error: "admin_required" };
+
+  const { error } = await createAdminClient()
+    .from("recruitment_fields")
+    .update({ status: "rejected" })
+    .eq("id", id)
+    .eq("status", "pending");
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
+
+export async function approveBatch(id: string): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { error: "admin_required" };
+
+  const supabase = createAdminClient();
+
+  await Promise.all([
+    supabase
+      .from("recruitment_resources")
+      .update({ status: "live" })
+      .eq("batch_id", id)
+      .eq("status", "pending"),
+    supabase
+      .from("recruitment_subfolders")
+      .update({ status: "live" })
+      .eq("batch_id", id)
+      .eq("status", "pending"),
+  ]);
+
+  const { error } = await supabase
+    .from("recruitment_batches")
+    .update({ status: "approved", reviewed_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "pending_review");
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
+
+export async function rejectBatch(
+  id: string,
+  reason: string
+): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role !== "admin") return { error: "admin_required" };
+
+  const supabase = createAdminClient();
+
+  // Clean up uploaded files from storage
+  const { data: resources } = await supabase
+    .from("recruitment_resources")
+    .select("file_path")
+    .eq("batch_id", id)
+    .not("file_path", "is", null);
+
+  const paths = (resources ?? [])
+    .map((r) => r.file_path)
+    .filter(Boolean) as string[];
+  if (paths.length > 0) {
+    await supabase.storage.from(BUCKET).remove(paths);
+  }
+
+  // Delete the pending resources and subfolders
+  await Promise.all([
+    supabase.from("recruitment_resources").delete().eq("batch_id", id),
+    supabase.from("recruitment_subfolders").delete().eq("batch_id", id),
+  ]);
+
+  const { error } = await supabase
+    .from("recruitment_batches")
+    .update({
+      status: "rejected",
+      rejection_reason: reason.trim() || "No reason provided.",
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("status", "pending_review");
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}

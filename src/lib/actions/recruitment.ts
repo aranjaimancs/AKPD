@@ -66,6 +66,8 @@ export type BatchWithItems = MemberBatch & {
 
 export type PendingBatch = BatchWithItems & { field_name: string; field_slug: string; };
 
+export type PendingFieldProposal = RecruitmentField & { proposed_by_name?: string };
+
 export type MemberSubmissions = {
   fieldProposals: RecruitmentField[];
   batches: BatchWithItems[];
@@ -921,7 +923,7 @@ export async function withdrawBatch(batchId: string): Promise<{ error?: string }
 // ── Admin: review pending submissions ────────────────────────────────────────
 
 export async function getPendingSubmissions(): Promise<{
-  fieldProposals: RecruitmentField[];
+  fieldProposals: PendingFieldProposal[];
   batches: PendingBatch[];
 }> {
   const member = await getCurrentMember();
@@ -964,7 +966,7 @@ export async function getPendingSubmissions(): Promise<{
   });
 
   return {
-    fieldProposals: (proposals ?? []) as RecruitmentField[],
+    fieldProposals: (proposals ?? []) as PendingFieldProposal[],
     batches,
   };
 }
@@ -1007,7 +1009,7 @@ export async function approveBatch(id: string): Promise<{ error?: string }> {
 
   const supabase = createAdminClient();
 
-  await Promise.all([
+  const [resourcesResult, subfoldersResult] = await Promise.all([
     supabase
       .from("recruitment_resources")
       .update({ status: "live" })
@@ -1019,6 +1021,8 @@ export async function approveBatch(id: string): Promise<{ error?: string }> {
       .eq("batch_id", id)
       .eq("status", "pending"),
   ]);
+  if (resourcesResult.error) return { error: resourcesResult.error.message };
+  if (subfoldersResult.error) return { error: subfoldersResult.error.message };
 
   const { error } = await supabase
     .from("recruitment_batches")
@@ -1046,6 +1050,7 @@ export async function rejectBatch(
     .from("recruitment_resources")
     .select("file_path")
     .eq("batch_id", id)
+    .eq("status", "pending")
     .not("file_path", "is", null);
 
   const paths = (resources ?? [])

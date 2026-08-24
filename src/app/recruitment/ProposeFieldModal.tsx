@@ -30,11 +30,6 @@ export default function ProposeFieldModal({
   const [pending, startTransition] = useTransition();
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Auto-derive slug from name when creating new
-  useEffect(() => {
-    if (!proposal && name) setSlug(slugify(name));
-  }, [proposal, name]);
-
   // Escape to close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -124,7 +119,10 @@ export default function ProposeFieldModal({
                 type="text"
                 placeholder="e.g. Restructuring"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (!proposal) setSlug(slugify(e.target.value));
+                }}
                 className="input"
               />
             </div>

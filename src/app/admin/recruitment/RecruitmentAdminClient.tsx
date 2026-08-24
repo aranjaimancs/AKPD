@@ -13,6 +13,10 @@ import {
   upsertSubfolder,
   deleteSubfolder,
   moveSubfolder,
+  approveFieldProposal,
+  rejectFieldProposal,
+  approveBatch,
+  rejectBatch,
 } from "@/lib/actions/recruitment";
 import type {
   FieldWithResources,
@@ -20,6 +24,8 @@ import type {
   RecruitmentSubfolder,
   SubfolderWithResources,
   FieldInput,
+  RecruitmentField,
+  PendingBatch,
 } from "@/lib/actions/recruitment";
 import { buildSubfolderTree, type SubfolderNode } from "@/lib/subfolderTree";
 
@@ -1871,12 +1877,280 @@ function FieldCard({
   );
 }
 
+// ── PendingPanel ──────────────────────────────────────────────────────────────
+
+function PendingPanel({
+  fieldProposals,
+  batches,
+}: {
+  fieldProposals: RecruitmentField[];
+  batches: PendingBatch[];
+}) {
+  const [rejectBatchId, setRejectBatchId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  if (fieldProposals.length === 0 && batches.length === 0) return null;
+
+  function handleApproveField(id: string) {
+    startTransition(async () => {
+      await approveFieldProposal(id);
+    });
+  }
+
+  function handleRejectField(id: string) {
+    if (!confirm("Reject this field proposal?")) return;
+    startTransition(async () => {
+      await rejectFieldProposal(id);
+    });
+  }
+
+  function handleApproveBatch(id: string) {
+    if (!confirm("Approve this batch? All resources will go live immediately.")) return;
+    startTransition(async () => {
+      await approveBatch(id);
+    });
+  }
+
+  async function handleRejectBatch() {
+    if (!rejectBatchId) return;
+    startTransition(async () => {
+      await rejectBatch(rejectBatchId, rejectReason);
+      setRejectBatchId(null);
+      setRejectReason("");
+    });
+  }
+
+  return (
+    <div
+      className="mb-8 rounded-2xl overflow-hidden"
+      style={{
+        background: "var(--s-0)",
+        border: "1px solid var(--b-default)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-5 py-4 flex items-center gap-3"
+        style={{ borderBottom: "1px solid var(--b-subtle)", background: "var(--s-1)" }}
+      >
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ background: "var(--akp-gold)" }}
+        />
+        <p
+          className="text-[13px] font-bold"
+          style={{ color: "var(--t-primary)", fontFamily: "var(--font-display)" }}
+        >
+          Pending Review
+        </p>
+        <span className="badge badge-neutral text-[11px] ml-auto">
+          {fieldProposals.length + batches.length} item{fieldProposals.length + batches.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      <div className="p-5 flex flex-col gap-5">
+        {/* Field proposals */}
+        {fieldProposals.length > 0 && (
+          <div>
+            <p
+              className="text-[10px] font-bold uppercase tracking-widest mb-2"
+              style={{ color: "var(--t-muted)" }}
+            >
+              Field Proposals
+            </p>
+            <div className="flex flex-col gap-2">
+              {fieldProposals.map((f) => (
+                <div
+                  key={f.id}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl transition-opacity"
+                  style={{
+                    background: "var(--s-1)",
+                    border: "1px solid var(--b-default)",
+                    opacity: pending ? 0.6 : 1,
+                  }}
+                >
+                  {f.icon && <span className="text-base shrink-0">{f.icon}</span>}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: "var(--t-primary)" }}>
+                      {f.name}
+                    </p>
+                    {f.description && (
+                      <p className="text-xs truncate" style={{ color: "var(--t-muted)" }}>
+                        {f.description}
+                      </p>
+                    )}
+                    <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
+                      /{f.slug}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      disabled={pending}
+                      onClick={() => handleApproveField(f.id)}
+                      className="btn btn-primary btn-sm disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      disabled={pending}
+                      onClick={() => handleRejectField(f.id)}
+                      className="text-xs font-semibold px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-30"
+                      style={{ color: "#dc2626" }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Resource batches */}
+        {batches.length > 0 && (
+          <div>
+            <p
+              className="text-[10px] font-bold uppercase tracking-widest mb-2"
+              style={{ color: "var(--t-muted)" }}
+            >
+              Resource Batches
+            </p>
+            <div className="flex flex-col gap-3">
+              {batches.map((batch) => {
+                const resourceCount = batch.recruitment_resources?.length ?? 0;
+                const subfolderCount = batch.recruitment_subfolders?.length ?? 0;
+                const totalCount = resourceCount + subfolderCount;
+
+                return (
+                  <div
+                    key={batch.id}
+                    className="rounded-xl overflow-hidden transition-opacity"
+                    style={{
+                      border: "1px solid var(--b-default)",
+                      opacity: pending ? 0.6 : 1,
+                    }}
+                  >
+                    {/* Batch header */}
+                    <div
+                      className="flex items-center gap-3 px-4 py-3"
+                      style={{ background: "var(--s-1)" }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: "var(--t-primary)" }}>
+                          {batch.field_name}
+                        </p>
+                        <p className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+                          from <span className="font-medium">{batch.submitted_by_name}</span> · {totalCount} item{totalCount !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          disabled={pending}
+                          onClick={() => handleApproveBatch(batch.id)}
+                          className="btn btn-primary btn-sm disabled:opacity-50"
+                        >
+                          Approve All
+                        </button>
+                        <button
+                          disabled={pending}
+                          onClick={() => {
+                            setRejectBatchId(batch.id);
+                            setRejectReason("");
+                          }}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-30"
+                          style={{ color: "#dc2626" }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Batch item preview */}
+                    <div className="px-4 py-2 flex flex-col gap-1">
+                      {(batch.recruitment_subfolders ?? []).map((sf) => (
+                        <div key={sf.id} className="flex items-center gap-2 py-1">
+                          <span className="text-xs" style={{ color: "var(--t-muted)" }}>📁</span>
+                          <span className="text-xs" style={{ color: "var(--t-secondary)" }}>{sf.name}</span>
+                          <span className="badge badge-neutral text-[10px]">Folder</span>
+                        </div>
+                      ))}
+                      {(batch.recruitment_resources ?? []).map((r) => (
+                        <div key={r.id} className="flex items-center gap-2 py-1">
+                          <span
+                            className="badge text-[10px] shrink-0"
+                            style={
+                              r.resource_type === "file"
+                                ? { background: "rgba(10,34,64,0.07)", color: "var(--t-secondary)" }
+                                : { background: "rgba(201,168,76,0.12)", color: "var(--akp-gold)" }
+                            }
+                          >
+                            {r.resource_type === "file" ? "File" : "Link"}
+                          </span>
+                          <span className="text-xs truncate" style={{ color: "var(--t-secondary)" }}>
+                            {r.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Inline rejection reason input */}
+                    {rejectBatchId === batch.id && (
+                      <div
+                        className="px-4 pb-4 flex flex-col gap-2"
+                        style={{ borderTop: "1px solid var(--b-subtle)" }}
+                      >
+                        <label className="input-label pt-3">
+                          Rejection reason{" "}
+                          <span className="font-normal normal-case" style={{ color: "var(--t-muted)" }}>
+                            (shown to the member)
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Duplicate content, please check existing resources first."
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          className="input text-sm"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => setRejectBatchId(null)}
+                            className="btn btn-ghost btn-sm"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleRejectBatch}
+                            disabled={pending}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                            style={{ color: "#dc2626" }}
+                          >
+                            {pending ? "Rejecting…" : "Confirm Reject"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function RecruitmentAdminClient({
   fields,
+  pendingSubmissions,
 }: {
   fields: FieldWithResources[];
+  pendingSubmissions: { fieldProposals: RecruitmentField[]; batches: PendingBatch[] };
 }) {
   const [showFieldModal, setShowFieldModal] = useState(false);
   const [editingField, setEditingField] = useState<FieldWithResources | null>(null);
@@ -1909,6 +2183,12 @@ export default function RecruitmentAdminClient({
 
   return (
     <>
+      {/* Pending review section */}
+      <PendingPanel
+        fieldProposals={pendingSubmissions.fieldProposals}
+        batches={pendingSubmissions.batches}
+      />
+
       {/* Stats strip */}
       <div className="flex gap-8 mb-8 pb-6" style={{ borderBottom: "1px solid var(--b-subtle)" }}>
         <div className="stat-item">

@@ -19,6 +19,8 @@ export type RecruitmentField = {
   icon: string | null;
   sort_order: number;
   is_published: boolean;
+  status: "live" | "pending" | "rejected";
+  proposed_by: string | null;
 };
 
 export type RecruitmentResource = {
@@ -32,6 +34,8 @@ export type RecruitmentResource = {
   file_mime: string | null;
   external_url: string | null;
   sort_order: number;
+  batch_id: string | null;
+  status: "live" | "pending" | "rejected";
 };
 
 export type RecruitmentSubfolder = {
@@ -40,6 +44,37 @@ export type RecruitmentSubfolder = {
   parent_id: string | null;
   name: string;
   sort_order: number;
+  batch_id: string | null;
+  status: "live" | "pending" | "rejected";
+};
+
+export type MemberBatch = {
+  id: string;
+  field_id: string;
+  submitted_by: string;
+  submitted_by_name: string;
+  status: "draft" | "pending_review" | "approved" | "rejected";
+  rejection_reason: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
+export type BatchWithItems = MemberBatch & {
+  recruitment_resources: RecruitmentResource[];
+  recruitment_subfolders: RecruitmentSubfolder[];
+};
+
+export type MemberSubmissions = {
+  fieldProposals: RecruitmentField[];
+  batches: BatchWithItems[];
+};
+
+export type FieldProposalInput = {
+  id?: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
 };
 
 export type SubfolderWithResources = RecruitmentSubfolder & {
@@ -80,12 +115,25 @@ export async function getSignedDownloadUrl(
 // ── Admin: signed upload URL ──────────────────────────────────────────────────
 
 export async function getSignedUploadUrl(
-  filePath: string
+  filePath: string,
+  batchId?: string
 ): Promise<{ signedUrl: string; token: string; path: string } | { error: string }> {
   const member = await getCurrentMember();
   if (!member) return { error: "not_authorized" };
-  if (member.role !== "admin") return { error: "admin_required" };
   if (!filePath || filePath.includes("..")) return { error: "invalid_path" };
+
+  if (member.role !== "admin") {
+    // Non-admins must supply a batchId they own and that is in draft state
+    if (!batchId) return { error: "admin_required" };
+    const { data: batch } = await createAdminClient()
+      .from("recruitment_batches")
+      .select("submitted_by, status")
+      .eq("id", batchId)
+      .maybeSingle();
+    if (!batch) return { error: "Batch not found." };
+    if (batch.submitted_by !== member.auth_user_id) return { error: "not_authorized" };
+    if (batch.status !== "draft") return { error: "Batch is not in draft status." };
+  }
 
   const { data, error } = await createAdminClient()
     .storage.from(BUCKET)
@@ -488,4 +536,123 @@ export async function moveSubfolder(
   revalidatePath("/recruitment");
   revalidatePath("/admin/recruitment");
   return {};
+}
+
+// ── Member: field proposals ───────────────────────────────────────────────────
+
+export async function proposeMemberField(
+  input: FieldProposalInput
+): Promise<{ error?: string; id?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const row = {
+    name: input.name.trim(),
+    slug: input.slug.trim().toLowerCase().replace(/\s+/g, "-"),
+    description: input.description?.trim() || null,
+    icon: input.icon?.trim() || null,
+    sort_order: 0,
+    is_published: false,
+    status: "pending",
+    proposed_by: member.auth_user_id,
+  };
+
+  const { data, error } = await createAdminClient()
+    .from("recruitment_fields")
+    .insert(row)
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return { id: data.id };
+}
+
+export async function updateMemberFieldProposal(
+  id: string,
+  input: FieldProposalInput
+): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: field } = await supabase
+    .from("recruitment_fields")
+    .select("proposed_by, status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!field) return { error: "Not found." };
+  if (field.proposed_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (field.status !== "pending") return { error: "Cannot edit a field that is no longer pending." };
+
+  const { error } = await supabase
+    .from("recruitment_fields")
+    .update({
+      name: input.name.trim(),
+      slug: input.slug.trim().toLowerCase().replace(/\s+/g, "-"),
+      description: input.description?.trim() || null,
+      icon: input.icon?.trim() || null,
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  return {};
+}
+
+export async function deleteMemberFieldProposal(id: string): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: field } = await supabase
+    .from("recruitment_fields")
+    .select("proposed_by, status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!field) return { error: "Not found." };
+  if (field.proposed_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (field.status === "live") return { error: "Cannot delete a live field." };
+
+  const { error } = await supabase.from("recruitment_fields").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
+
+export async function getMemberSubmissions(): Promise<MemberSubmissions> {
+  const member = await getCurrentMember();
+  if (!member) return { fieldProposals: [], batches: [] };
+
+  const supabase = createAdminClient();
+
+  const { data: proposals } = await supabase
+    .from("recruitment_fields")
+    .select("*")
+    .eq("proposed_by", member.auth_user_id)
+    .in("status", ["pending", "rejected"])
+    .order("created_at", { ascending: false });
+
+  const { data: batches } = await supabase
+    .from("recruitment_batches")
+    .select(
+      `*, recruitment_resources (
+        id, field_id, subfolder_id, title, description, resource_type,
+        file_path, file_mime, external_url, sort_order, batch_id, status
+      ), recruitment_subfolders (
+        id, field_id, parent_id, name, sort_order, batch_id, status
+      )`
+    )
+    .eq("submitted_by", member.auth_user_id)
+    .not("status", "eq", "approved")
+    .order("created_at", { ascending: false });
+
+  return {
+    fieldProposals: (proposals ?? []) as RecruitmentField[],
+    batches: (batches ?? []) as BatchWithItems[],
+  };
 }

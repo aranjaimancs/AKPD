@@ -64,6 +64,8 @@ export type BatchWithItems = MemberBatch & {
   recruitment_subfolders: RecruitmentSubfolder[];
 };
 
+export type PendingBatch = BatchWithItems & { field_name: string; field_slug: string; };
+
 export type MemberSubmissions = {
   fieldProposals: RecruitmentField[];
   batches: BatchWithItems[];
@@ -599,6 +601,7 @@ export async function updateMemberFieldProposal(
 
   if (error) return { error: error.message };
   revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
   return {};
 }
 

@@ -1062,8 +1062,8 @@ export async function rejectBatch(
 
   // Delete the pending resources and subfolders
   await Promise.all([
-    supabase.from("recruitment_resources").delete().eq("batch_id", id),
-    supabase.from("recruitment_subfolders").delete().eq("batch_id", id),
+    supabase.from("recruitment_resources").delete().eq("batch_id", id).eq("status", "pending"),
+    supabase.from("recruitment_subfolders").delete().eq("batch_id", id).eq("status", "pending"),
   ]);
 
   const { error } = await supabase

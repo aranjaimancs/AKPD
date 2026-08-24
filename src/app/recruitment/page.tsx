@@ -1,7 +1,11 @@
 import { requireMember } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { FieldWithResources } from "@/lib/actions/recruitment";
+import {
+  getMemberSubmissions,
+  type FieldWithResources,
+  type MemberSubmissions,
+} from "@/lib/actions/recruitment";
 import RecruitmentClient from "./RecruitmentClient";
 
 export const dynamic = "force-dynamic";
@@ -16,28 +20,46 @@ export default async function RecruitmentPage() {
     .select(
       `*,
        recruitment_subfolders (
-         id, field_id, parent_id, name, sort_order,
+         id, field_id, parent_id, name, sort_order, batch_id, status,
          recruitment_resources (
            id, field_id, subfolder_id, title, description, resource_type,
-           file_path, file_mime, external_url, sort_order
+           file_path, file_mime, external_url, sort_order, batch_id, status
          )
        ),
        recruitment_resources (
          id, field_id, subfolder_id, title, description, resource_type,
-         file_path, file_mime, external_url, sort_order
+         file_path, file_mime, external_url, sort_order, batch_id, status
        )`
     )
     .eq("is_published", true)
+    .eq("status", "live")
     .order("sort_order")
     .order("sort_order", { referencedTable: "recruitment_subfolders" })
     .order("sort_order", { referencedTable: "recruitment_resources" });
 
-  const fields = (raw ?? []) as FieldWithResources[];
+  // Filter pending/rejected content from nested resources and subfolders
+  const fields: FieldWithResources[] = (raw ?? []).map((f) => ({
+    ...f,
+    recruitment_subfolders: (f.recruitment_subfolders ?? [])
+      .filter((sf: { status: string }) => sf.status === "live")
+      .map((sf: { recruitment_resources?: { status: string }[] }) => ({
+        ...sf,
+        recruitment_resources: (sf.recruitment_resources ?? []).filter(
+          (r: { status: string }) => r.status === "live"
+        ),
+      })),
+    recruitment_resources: (f.recruitment_resources ?? []).filter(
+      (r: { status: string }) => r.status === "live"
+    ),
+  })) as FieldWithResources[];
+
   const fieldsWithContent = fields.filter(
     (f) =>
       (f.recruitment_subfolders ?? []).length > 0 ||
       (f.recruitment_resources ?? []).length > 0
   );
+
+  const memberSubmissions: MemberSubmissions = await getMemberSubmissions();
 
   return (
     <main className="flex-1">
@@ -74,7 +96,7 @@ export default async function RecruitmentPage() {
 
       {/* ── Content ── */}
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {fields.length === 0 ? (
+        {fields.length === 0 && memberSubmissions.fieldProposals.length === 0 ? (
           <div className="rounded-2xl px-8 py-16 text-center card">
             <p
               className="text-base font-bold mb-2"
@@ -96,7 +118,12 @@ export default async function RecruitmentPage() {
             )}
           </div>
         ) : (
-          <RecruitmentClient fields={fields} isAdmin={isAdmin} />
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          <RecruitmentClient
+            fields={fields}
+            isAdmin={isAdmin}
+            {...({ memberSubmissions } as any)}
+          />
         )}
       </div>
     </main>

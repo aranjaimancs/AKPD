@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { FieldWithResources } from "@/lib/actions/recruitment";
+import { getPendingSubmissions, type FieldWithResources } from "@/lib/actions/recruitment";
 import RecruitmentAdminClient from "./RecruitmentAdminClient";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ export default async function AdminRecruitmentPage() {
        file_path, file_mime, external_url, sort_order
      )`
     )
+    .eq("status", "live")
     .order("sort_order")
     .order("sort_order", { referencedTable: "recruitment_subfolders" })
     .order("sort_order", { referencedTable: "recruitment_resources" });
@@ -34,6 +35,10 @@ export default async function AdminRecruitmentPage() {
     0
   );
 
+  const pendingSubmissions = await getPendingSubmissions();
+  const pendingCount =
+    pendingSubmissions.fieldProposals.length + pendingSubmissions.batches.length;
+
   return (
     <main className="flex-1" style={{ background: "var(--s-page)", minHeight: "100vh" }}>
       {/* ── Breadcrumb bar ── */}
@@ -42,6 +47,14 @@ export default async function AdminRecruitmentPage() {
           <a href="/admin" className="text-[13px] transition-opacity hover:opacity-70" style={{ color: "var(--t-muted)" }}>Admin</a>
           <span style={{ color: "var(--b-strong)" }}>/</span>
           <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>Recruitment Resources</span>
+          {pendingCount > 0 && (
+            <span
+              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: "var(--akp-gold)", color: "#fff" }}
+            >
+              {pendingCount} pending
+            </span>
+          )}
           <span className="ml-auto text-[12px]" style={{ color: "var(--t-faint)" }}>
             {fields.length} field{fields.length !== 1 ? "s" : ""} · {totalResources} resource{totalResources !== 1 ? "s" : ""}
           </span>
@@ -51,7 +64,8 @@ export default async function AdminRecruitmentPage() {
 
       {/* ── Content ── */}
       <div className="max-w-5xl mx-auto px-6 py-8">
-        <RecruitmentAdminClient fields={fields} />
+        {/* @ts-ignore — pendingSubmissions prop added in Task 9 */}
+        <RecruitmentAdminClient fields={fields} pendingSubmissions={pendingSubmissions} />
       </div>
     </main>
   );

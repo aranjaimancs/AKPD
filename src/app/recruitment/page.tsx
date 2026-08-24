@@ -118,11 +118,10 @@ export default async function RecruitmentPage() {
             )}
           </div>
         ) : (
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           <RecruitmentClient
             fields={fields}
             isAdmin={isAdmin}
-            {...({ memberSubmissions } as any)}
+            memberSubmissions={memberSubmissions}
           />
         )}
       </div>

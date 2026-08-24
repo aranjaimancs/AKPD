@@ -1888,6 +1888,7 @@ function PendingPanel({
 }) {
   const [rejectBatchId, setRejectBatchId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (fieldProposals.length === 0 && batches.length === 0) return null;
@@ -1914,10 +1915,15 @@ function PendingPanel({
 
   async function handleRejectBatch() {
     if (!rejectBatchId) return;
+    setRejectError(null);
     startTransition(async () => {
-      await rejectBatch(rejectBatchId, rejectReason);
-      setRejectBatchId(null);
-      setRejectReason("");
+      const result = await rejectBatch(rejectBatchId, rejectReason);
+      if (result.error) {
+        setRejectError(result.error);
+      } else {
+        setRejectBatchId(null);
+        setRejectReason("");
+      }
     });
   }
 
@@ -2114,9 +2120,14 @@ function PendingPanel({
                           onChange={(e) => setRejectReason(e.target.value)}
                           className="input text-sm"
                         />
+                        {rejectError && (
+                          <p className="text-xs" style={{ color: "#dc2626" }}>
+                            {rejectError}
+                          </p>
+                        )}
                         <div className="flex gap-2 justify-end">
                           <button
-                            onClick={() => setRejectBatchId(null)}
+                            onClick={() => { setRejectBatchId(null); setRejectError(null); }}
                             className="btn btn-ghost btn-sm"
                           >
                             Cancel

@@ -64,7 +64,6 @@ export default async function AdminRecruitmentPage() {
 
       {/* ── Content ── */}
       <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* @ts-ignore — pendingSubmissions prop added in Task 9 */}
         <RecruitmentAdminClient fields={fields} pendingSubmissions={pendingSubmissions} />
       </div>
     </main>

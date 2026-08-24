@@ -659,3 +659,261 @@ export async function getMemberSubmissions(): Promise<MemberSubmissions> {
     batches: (batches ?? []) as BatchWithItems[],
   };
 }
+
+// ── Member: batch management ──────────────────────────────────────────────────
+
+export async function getOrCreateDraftBatch(
+  fieldId: string
+): Promise<{ id: string } | { error: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+
+  // Verify field is live
+  const { data: field } = await supabase
+    .from("recruitment_fields")
+    .select("id, status")
+    .eq("id", fieldId)
+    .maybeSingle();
+  if (!field || field.status !== "live") return { error: "Field not found or not live." };
+
+  // Return existing draft if one exists
+  const { data: existing } = await supabase
+    .from("recruitment_batches")
+    .select("id")
+    .eq("field_id", fieldId)
+    .eq("submitted_by", member.auth_user_id)
+    .eq("status", "draft")
+    .maybeSingle();
+  if (existing) return { id: existing.id };
+
+  // Create new draft batch
+  const { data: created, error } = await supabase
+    .from("recruitment_batches")
+    .insert({
+      field_id: fieldId,
+      submitted_by: member.auth_user_id,
+      submitted_by_name: member.full_name ?? member.email,
+      status: "draft",
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  return { id: created.id };
+}
+
+export async function addResourceToBatch(
+  batchId: string,
+  input: Omit<ResourceInput, "id">
+): Promise<{ error?: string; id?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: batch } = await supabase
+    .from("recruitment_batches")
+    .select("submitted_by, status")
+    .eq("id", batchId)
+    .maybeSingle();
+
+  if (!batch) return { error: "Batch not found." };
+  if (batch.submitted_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (batch.status !== "draft") return { error: "Batch is not editable." };
+
+  const { data, error } = await supabase
+    .from("recruitment_resources")
+    .insert({
+      field_id: input.field_id,
+      subfolder_id: input.subfolder_id ?? null,
+      title: input.title.trim(),
+      description: input.description?.trim() || null,
+      resource_type: input.resource_type,
+      file_path: input.file_path ?? null,
+      file_mime: input.file_mime ?? null,
+      external_url: input.external_url?.trim() || null,
+      sort_order: input.sort_order ?? 0,
+      created_by: member.auth_user_id,
+      batch_id: batchId,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  return { id: data.id };
+}
+
+export async function removeResourceFromBatch(
+  resourceId: string
+): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: resource } = await supabase
+    .from("recruitment_resources")
+    .select("batch_id, file_path, status")
+    .eq("id", resourceId)
+    .maybeSingle();
+
+  if (!resource?.batch_id) return { error: "Resource not found or not in a batch." };
+
+  const { data: batch } = await supabase
+    .from("recruitment_batches")
+    .select("submitted_by, status")
+    .eq("id", resource.batch_id)
+    .maybeSingle();
+
+  if (!batch) return { error: "Batch not found." };
+  if (batch.submitted_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (batch.status !== "draft") return { error: "Batch is not editable." };
+
+  if (resource.file_path) {
+    await supabase.storage.from(BUCKET).remove([resource.file_path]);
+  }
+
+  const { error } = await supabase
+    .from("recruitment_resources")
+    .delete()
+    .eq("id", resourceId);
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function addSubfolderToBatch(
+  batchId: string,
+  input: Omit<SubfolderInput, "id">
+): Promise<{ error?: string; id?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: batch } = await supabase
+    .from("recruitment_batches")
+    .select("submitted_by, status")
+    .eq("id", batchId)
+    .maybeSingle();
+
+  if (!batch) return { error: "Batch not found." };
+  if (batch.submitted_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (batch.status !== "draft") return { error: "Batch is not editable." };
+
+  const { data, error } = await supabase
+    .from("recruitment_subfolders")
+    .insert({
+      field_id: input.field_id,
+      parent_id: input.parent_id ?? null,
+      name: input.name.trim(),
+      sort_order: input.sort_order ?? 0,
+      batch_id: batchId,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  return { id: data.id };
+}
+
+export async function removeSubfolderFromBatch(
+  subfolderId: string
+): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: subfolder } = await supabase
+    .from("recruitment_subfolders")
+    .select("batch_id, status")
+    .eq("id", subfolderId)
+    .maybeSingle();
+
+  if (!subfolder?.batch_id) return { error: "Subfolder not found or not in a batch." };
+
+  const { data: batch } = await supabase
+    .from("recruitment_batches")
+    .select("submitted_by, status")
+    .eq("id", subfolder.batch_id)
+    .maybeSingle();
+
+  if (!batch) return { error: "Batch not found." };
+  if (batch.submitted_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (batch.status !== "draft") return { error: "Batch is not editable." };
+
+  const { error } = await supabase
+    .from("recruitment_subfolders")
+    .delete()
+    .eq("id", subfolderId);
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function submitBatchForReview(
+  batchId: string
+): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: batch } = await supabase
+    .from("recruitment_batches")
+    .select("submitted_by, status")
+    .eq("id", batchId)
+    .maybeSingle();
+
+  if (!batch) return { error: "Batch not found." };
+  if (batch.submitted_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (batch.status !== "draft") return { error: "Batch is already submitted." };
+
+  const { count: resourceCount } = await supabase
+    .from("recruitment_resources")
+    .select("id", { count: "exact", head: true })
+    .eq("batch_id", batchId);
+
+  const { count: subfolderCount } = await supabase
+    .from("recruitment_subfolders")
+    .select("id", { count: "exact", head: true })
+    .eq("batch_id", batchId);
+
+  if ((resourceCount ?? 0) + (subfolderCount ?? 0) === 0) {
+    return { error: "Add at least one file, link, or folder before submitting." };
+  }
+
+  const { error } = await supabase
+    .from("recruitment_batches")
+    .update({ status: "pending_review" })
+    .eq("id", batchId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
+
+export async function withdrawBatch(batchId: string): Promise<{ error?: string }> {
+  const member = await getCurrentMember();
+  if (!member || member.role === "alumni") return { error: "not_authorized" };
+
+  const supabase = createAdminClient();
+  const { data: batch } = await supabase
+    .from("recruitment_batches")
+    .select("submitted_by, status")
+    .eq("id", batchId)
+    .maybeSingle();
+
+  if (!batch) return { error: "Batch not found." };
+  if (batch.submitted_by !== member.auth_user_id) return { error: "not_authorized" };
+  if (batch.status !== "pending_review") return { error: "Batch is not under review." };
+
+  const { error } = await supabase
+    .from("recruitment_batches")
+    .update({ status: "draft" })
+    .eq("id", batchId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/recruitment");
+  revalidatePath("/admin/recruitment");
+  return {};
+}
